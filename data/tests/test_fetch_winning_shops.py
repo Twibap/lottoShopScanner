@@ -187,12 +187,123 @@ class ResumeTests(unittest.TestCase):
 
             self.assertEqual(len(output.read_text(encoding="utf-8").splitlines()), 2)
             log_text = log_file.read_text(encoding="utf-8")
-            self.assertIn("건너뜀: 1231회차", log_text)
-            self.assertIn("건너뜀: 1232회차", log_text)
+            self.assertIn("건너뜀 2개", log_text)
 
             for handler in scanner.logger.handlers:
                 handler.close()
             scanner.logger.handlers.clear()
+
+
+class ResilientCollectionTests(unittest.TestCase):
+    def tearDown(self) -> None:
+        for handler in scanner.logger.handlers:
+            handler.close()
+        scanner.logger.handlers.clear()
+
+    def test_failed_draw_is_recorded_and_later_draw_continues(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "output.jsonl"
+            failures = Path(temp_dir) / "failures.jsonl"
+
+            def fetch(draw: int, *_: object) -> dict[str, object]:
+                if draw == 2:
+                    raise RuntimeError("error_code=HTTP_500 | failed")
+                return {"data": {"total": 0, "list": []}}
+
+            with patch.object(scanner.time, "sleep"):
+                failed, saved = scanner.collect_pass(
+                    [1, 2, 3], "first", output, failures,
+                    1, 0, 0, 0, 0, 3, 60, 300, fetcher=fetch,
+                )
+
+            records = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+            failure_records = [json.loads(line) for line in failures.read_text(
+                encoding="utf-8").splitlines()]
+            self.assertEqual([record["draw"] for record in records], [1, 3])
+            self.assertEqual(failed, [2])
+            self.assertEqual(saved, 2)
+            self.assertEqual(failure_records[0]["draw"], 2)
+            self.assertEqual(failure_records[0]["phase"], "first")
+            self.assertEqual(failure_records[0]["error_code"], "HTTP_500")
+
+    def test_main_retries_only_failed_draws_after_first_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "output.jsonl"
+            failures = Path(temp_dir) / "failures.jsonl"
+            log_file = Path(temp_dir) / "scanner.log"
+            calls: list[int] = []
+
+            def fetch(draw: int, *_: object) -> dict[str, object]:
+                calls.append(draw)
+                if draw == 2 and calls.count(2) == 1:
+                    raise RuntimeError("error_code=TIMEOUT | failed")
+                return SUCCESS_PAYLOAD
+
+            argv = [
+                "fetch_winning_shops.py", "1", "3", "--output", str(output),
+                "--failed-output", str(failures), "--log-file", str(log_file),
+                "--delay", "0", "--max-delay", "0",
+            ]
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(scanner, "fetch_draw", side_effect=fetch),
+                patch.object(scanner.time, "sleep"),
+            ):
+                self.assertEqual(scanner.main(), 0)
+
+            self.assertEqual(calls, [1, 2, 3, 2])
+            records = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([record["draw"] for record in records], [1, 3, 2])
+            for handler in scanner.logger.handlers:
+                handler.close()
+            scanner.logger.handlers.clear()
+
+    def test_request_delay_is_randomized_within_configured_range(self) -> None:
+        with (
+            patch.object(scanner.random, "uniform", return_value=1.75) as uniform,
+            patch.object(scanner.time, "sleep") as sleep,
+        ):
+            scanner.sleep_between_requests(1.0, 2.5)
+        uniform.assert_called_once_with(1.0, 2.5)
+        sleep.assert_called_once_with(1.75)
+
+    def test_consecutive_timeouts_trigger_circuit_breaker(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "output.jsonl"
+            failures = Path(temp_dir) / "failures.jsonl"
+
+            def timeout(*_: object) -> dict[str, object]:
+                raise RuntimeError("error_code=CONNECTION_TIMEOUT | failed")
+
+            with (
+                patch.object(scanner.random, "uniform", return_value=120.0) as uniform,
+                patch.object(scanner.time, "sleep") as sleep,
+            ):
+                failed, saved = scanner.collect_pass(
+                    [1, 2, 3], "first", output, failures,
+                    1, 0, 0, 0, 0, 3, 60, 300, fetcher=timeout,
+                )
+
+            self.assertEqual(failed, [1, 2, 3])
+            self.assertEqual(saved, 0)
+            uniform.assert_called_once_with(60, 300)
+            sleep.assert_called_once_with(120.0)
+
+    def test_non_timeout_failure_resets_timeout_streak(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "output.jsonl"
+            failures = Path(temp_dir) / "failures.jsonl"
+            errors = iter(["TIMEOUT", "HTTP_500", "TIMEOUT", "TIMEOUT"])
+
+            def fail(*_: object) -> dict[str, object]:
+                raise RuntimeError(f"error_code={next(errors)} | failed")
+
+            with patch.object(scanner.time, "sleep") as sleep:
+                scanner.collect_pass(
+                    [1, 2, 3, 4], "first", output, failures,
+                    1, 0, 0, 0, 0, 3, 60, 300, fetcher=fail,
+                )
+            sleep.assert_not_called()
 
 
 if __name__ == "__main__":
