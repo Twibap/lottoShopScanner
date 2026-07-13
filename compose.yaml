@@ -1,0 +1,9 @@
+name: lotto-shop-scanner
+
+services:
+  data-collector:
+    build:
+      context: ./apps/data-collector
+    image: lotto-shop-scanner/data-collector:local
+    volumes:
+      - ./apps/data-collector/output:/app/output
