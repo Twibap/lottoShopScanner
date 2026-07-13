@@ -1,6 +1,12 @@
 # 동행복권 당첨 판매점 수집
 
-시작 회차와 끝 회차를 매개변수로 전달합니다.
+회차 하나만 전달하면 해당 회차만 조회합니다.
+
+```powershell
+python .\src\fetch_winning_shops.py 1232
+```
+
+시작 회차와 끝 회차를 함께 전달하면 두 회차를 모두 포함한 범위를 조회합니다.
 
 ```powershell
 python .\src\fetch_winning_shops.py 1230 1232

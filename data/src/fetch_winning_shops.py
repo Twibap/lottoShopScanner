@@ -45,8 +45,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="회차별 로또 당첨 판매점을 JSON Lines 파일 끝에 추가합니다."
     )
-    parser.add_argument("start_draw", type=positive_int, help="시작 회차(포함)")
-    parser.add_argument("end_draw", type=positive_int, help="끝 회차(포함)")
+    parser.add_argument("start_draw", type=positive_int, help="조회 회차 또는 시작 회차")
+    parser.add_argument(
+        "end_draw",
+        type=positive_int,
+        nargs="?",
+        help="끝 회차(생략하면 시작 회차만 조회)",
+    )
     parser.add_argument("--output", type=Path, help="출력 JSONL 파일 경로")
     parser.add_argument(
         "--delay",
@@ -96,7 +101,7 @@ def main() -> int:
     try:
         args = parse_args()
         start_draw = args.start_draw
-        end_draw = args.end_draw
+        end_draw = args.end_draw if args.end_draw is not None else start_draw
         if start_draw > end_draw:
             raise ValueError("시작 회차는 끝 회차보다 클 수 없습니다.")
 
