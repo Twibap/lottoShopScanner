@@ -61,3 +61,15 @@ HTTP 오류는 상태 코드가 그대로 포함되므로 `HTTP_400`부터 `HTTP
 `TIMEOUT`, `URL_ERROR`, `CONNECTION_ERROR`, `INVALID_JSON`은 설정된 횟수만큼
 재시도합니다. 그 밖의 HTTP `4xx`, `INVALID_RESPONSE`, `API_<resultCode>`는
 즉시 실패로 기록됩니다.
+
+## 로컬 테스트
+
+자동 테스트는 `unittest.mock`으로 HTTP 요청을 대체하므로 동행복권 서버에 실제
+요청을 보내지 않습니다. `data` 폴더에서 다음 명령으로 실행합니다.
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+테스트 대상은 정상 응답, JSONL 저장과 이어받기, HTTP 429의 `Retry-After`,
+HTTP 404, 타임아웃 재시도, 잘못된 JSON, API 오류 코드 및 건너뛰기 로그입니다.

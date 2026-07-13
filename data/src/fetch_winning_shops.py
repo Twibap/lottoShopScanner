@@ -92,6 +92,8 @@ def parse_args() -> argparse.Namespace:
 def configure_logging(log_path: Path) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     logger.setLevel(logging.DEBUG)
+    for handler in logger.handlers:
+        handler.close()
     logger.handlers.clear()
     file_formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
 
@@ -173,6 +175,7 @@ def fetch_draw(
             error_code = f"HTTP_{exc.code}"
             retryable = exc.code in (408, 429) or 500 <= exc.code < 600
             if not retryable or attempt == max_attempts:
+                exc.close()
                 raise RuntimeError(
                     f"error_code={error_code} | {draw}회차 HTTP 오류: {exc.reason}"
                 ) from exc
@@ -184,6 +187,7 @@ def fetch_draw(
                 "error_code=%s | %s회차 서버 오류. %.1f초 후 재시도 (%s/%s)",
                 error_code, draw, wait, attempt, max_retries,
             )
+            exc.close()
             time.sleep(wait)
         except (URLError, TimeoutError, ConnectionError, json.JSONDecodeError) as exc:
             error_code = exception_error_code(exc)
