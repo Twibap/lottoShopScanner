@@ -91,16 +91,18 @@ def parse_args() -> argparse.Namespace:
 
 def configure_logging(log_path: Path) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     logger.handlers.clear()
-    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
+    file_formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
 
     console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(console_handler)
 
     file_handler = logging.FileHandler(log_path, encoding="utf-8")
-    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
 
 
@@ -221,22 +223,25 @@ def main() -> int:
         completed_draws = load_completed_draws(output_path)
         pending_draws = [draw for draw in requested_draws if draw not in completed_draws]
         skipped_count = len(requested_draws) - len(pending_draws)
+        for draw in requested_draws:
+            if draw in completed_draws:
+                logger.debug("건너뜀: %s회차는 출력 파일에 이미 저장되어 있습니다.", draw)
         logger.info(
-            "조회 시작: %s~%s회차, 전체 %s개, 완료 %s개, 남은 %s개",
-            start_draw, end_draw, len(requested_draws), skipped_count, len(pending_draws),
+            "조회 범위 %s~%s회차 | 남은 %s개 | 건너뜀 %s개",
+            start_draw, end_draw, len(pending_draws), skipped_count,
         )
 
         saved_count = 0
         with output_path.open("a", encoding="utf-8", newline="\n") as output_file:
             for index, draw in enumerate(pending_draws, start=1):
-                logger.info("[%s/%s] %s회차 HTTP 요청 중", index, len(pending_draws), draw)
+                logger.info("[%s/%s] %s회차 조회 중...", index, len(pending_draws), draw)
                 response = fetch_draw(draw, args.timeout, args.max_retries, args.max_backoff)
                 record = {"draw": draw, **response}
                 output_file.write(json.dumps(record, ensure_ascii=False) + "\n")
                 output_file.flush()
                 os.fsync(output_file.fileno())
                 saved_count += 1
-                logger.info(
+                logger.debug(
                     "[%s/%s] %s회차 저장 완료 (%s개 판매점)",
                     index, len(pending_draws), draw, response["data"].get("total", 0),
                 )
@@ -245,7 +250,7 @@ def main() -> int:
                     time.sleep(args.delay)
 
         logger.info(
-            "작업 완료: 새로 저장 %s개, 기존 항목 건너뜀 %s개, 파일 %s",
+            "완료 | 저장 %s개 | 건너뜀 %s개 | %s",
             saved_count, skipped_count, output_path,
         )
         return 0
