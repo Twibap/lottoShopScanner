@@ -126,6 +126,18 @@ def backoff_seconds(attempt: int, maximum: float) -> float:
     return min(maximum, (2 ** (attempt - 1)) + random.uniform(0, 1))
 
 
+def exception_error_code(error: BaseException) -> str:
+    if isinstance(error, json.JSONDecodeError):
+        return "INVALID_JSON"
+    if isinstance(error, TimeoutError):
+        return "TIMEOUT"
+    if isinstance(error, URLError):
+        return "URL_ERROR"
+    if isinstance(error, ConnectionError):
+        return "CONNECTION_ERROR"
+    return type(error).__name__.upper()
+
+
 def fetch_draw(
     draw: int,
     timeout: float,
@@ -149,28 +161,42 @@ def fetch_draw(
                 payload = json.loads(response.read().decode(charset))
 
             if not isinstance(payload, dict) or not isinstance(payload.get("data"), dict):
-                raise RuntimeError(f"{draw}회차 응답 형식이 예상과 다릅니다.")
+                result_code = payload.get("resultCode") if isinstance(payload, dict) else None
+                result_message = payload.get("resultMessage") if isinstance(payload, dict) else None
+                error_code = f"API_{result_code}" if result_code is not None else "INVALID_RESPONSE"
+                raise RuntimeError(
+                    f"error_code={error_code} | {draw}회차 응답 오류: "
+                    f"{result_message or '응답 형식이 예상과 다릅니다.'}"
+                )
             return payload
         except HTTPError as exc:
+            error_code = f"HTTP_{exc.code}"
             retryable = exc.code in (408, 429) or 500 <= exc.code < 600
             if not retryable or attempt == max_attempts:
-                raise RuntimeError(f"{draw}회차 HTTP 오류 {exc.code}: {exc.reason}") from exc
+                raise RuntimeError(
+                    f"error_code={error_code} | {draw}회차 HTTP 오류: {exc.reason}"
+                ) from exc
             wait = retry_after_seconds(exc)
             if wait is None:
                 wait = backoff_seconds(attempt, max_backoff)
             wait = min(wait, max_backoff)
             logger.warning(
-                "%s회차 서버 응답 HTTP %s. %.1f초 후 재시도 (%s/%s)",
-                draw, exc.code, wait, attempt, max_retries,
+                "error_code=%s | %s회차 서버 오류. %.1f초 후 재시도 (%s/%s)",
+                error_code, draw, wait, attempt, max_retries,
             )
             time.sleep(wait)
         except (URLError, TimeoutError, ConnectionError, json.JSONDecodeError) as exc:
+            error_code = exception_error_code(exc)
             if attempt == max_attempts:
-                raise RuntimeError(f"{draw}회차 조회 실패 ({max_attempts}회 시도): {exc}") from exc
+                raise RuntimeError(
+                    f"error_code={error_code} | {draw}회차 조회 실패 "
+                    f"({max_attempts}회 시도): {exc}"
+                ) from exc
             wait = backoff_seconds(attempt, max_backoff)
             logger.warning(
-                "%s회차 일시적 통신 오류: %s. %.1f초 후 재시도 (%s/%s)",
-                draw, exc, wait, attempt, max_retries,
+                "error_code=%s | %s회차 일시적 통신 오류: %s. "
+                "%.1f초 후 재시도 (%s/%s)",
+                error_code, draw, exc, wait, attempt, max_retries,
             )
             time.sleep(wait)
 

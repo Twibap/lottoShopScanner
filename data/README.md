@@ -41,3 +41,23 @@ python .\src\fetch_winning_shops.py 1230 1232 --output .\output\winning_shops.js
 
 서버가 `Retry-After` 헤더를 보내면 해당 시간을 우선 적용하고, 그렇지 않으면
 재시도할 때마다 대기 시간을 늘립니다.
+
+## 오류 코드
+
+오류 로그의 `error_code`에는 다음 코드가 기록됩니다.
+
+| 코드 | 의미 |
+|---|---|
+| `HTTP_<상태 코드>` | HTTP 요청 실패입니다. 예: `HTTP_408`, `HTTP_429`, `HTTP_500` |
+| `TIMEOUT` | 설정한 요청 제한 시간을 초과했습니다. |
+| `URL_ERROR` | DNS 조회 실패, 연결 거부 등 URL 요청 단계에서 오류가 발생했습니다. |
+| `CONNECTION_ERROR` | 서버와의 연결이 끊기거나 연결 과정에서 오류가 발생했습니다. |
+| `INVALID_JSON` | 서버 응답을 JSON으로 해석할 수 없습니다. |
+| `INVALID_RESPONSE` | JSON이지만 예상한 `data` 객체가 없고 API 오류 코드도 없습니다. |
+| `API_<resultCode>` | 동행복권 응답의 `resultCode`가 오류를 나타냅니다. 실제 값이 코드에 포함됩니다. |
+
+HTTP 오류는 상태 코드가 그대로 포함되므로 `HTTP_400`부터 `HTTP_599`까지
+수신한 실제 상태를 구분할 수 있습니다. HTTP `408`, `429`, `5xx`와
+`TIMEOUT`, `URL_ERROR`, `CONNECTION_ERROR`, `INVALID_JSON`은 설정된 횟수만큼
+재시도합니다. 그 밖의 HTTP `4xx`, `INVALID_RESPONSE`, `API_<resultCode>`는
+즉시 실패로 기록됩니다.
