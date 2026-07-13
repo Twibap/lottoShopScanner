@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
@@ -85,6 +85,26 @@ class FetchDrawTests(unittest.TestCase):
         ):
             scanner.fetch_draw(1232, 1, max_retries=2, max_backoff=0)
         self.assertEqual(urlopen.call_count, 3)
+
+    def test_url_error_wrapping_timeout_uses_connection_timeout_code(self) -> None:
+        with (
+            patch.object(
+                scanner,
+                "urlopen",
+                side_effect=URLError(TimeoutError("timed out")),
+            ),
+            self.assertRaisesRegex(RuntimeError, "error_code=CONNECTION_TIMEOUT"),
+        ):
+            scanner.fetch_draw(1232, 1, max_retries=0, max_backoff=0)
+
+    def test_winerror_10060_uses_connection_timeout_code(self) -> None:
+        reason = OSError("connection timed out")
+        reason.winerror = 10060
+        with (
+            patch.object(scanner, "urlopen", side_effect=URLError(reason)),
+            self.assertRaisesRegex(RuntimeError, "error_code=CONNECTION_TIMEOUT"),
+        ):
+            scanner.fetch_draw(506, 1, max_retries=0, max_backoff=0)
 
     def test_invalid_json_keeps_error_code(self) -> None:
         with (

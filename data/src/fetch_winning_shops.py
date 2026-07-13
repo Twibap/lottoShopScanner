@@ -134,6 +134,11 @@ def exception_error_code(error: BaseException) -> str:
     if isinstance(error, TimeoutError):
         return "TIMEOUT"
     if isinstance(error, URLError):
+        reason = error.reason
+        if isinstance(reason, TimeoutError) or (
+            isinstance(reason, OSError) and getattr(reason, "winerror", None) == 10060
+        ):
+            return "CONNECTION_TIMEOUT"
         return "URL_ERROR"
     if isinstance(error, ConnectionError):
         return "CONNECTION_ERROR"
