@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
+import socket
+import ssl
 import sys
 import tempfile
 import unittest
@@ -105,6 +107,41 @@ class FetchDrawTests(unittest.TestCase):
             self.assertRaisesRegex(RuntimeError, "error_code=CONNECTION_TIMEOUT"),
         ):
             scanner.fetch_draw(506, 1, max_retries=0, max_backoff=0)
+
+    def test_common_network_errors_have_specific_error_codes(self) -> None:
+        cases = [
+            (socket.gaierror("name resolution failed"), "DNS_ERROR"),
+            (ConnectionRefusedError("connection refused"), "CONNECTION_REFUSED"),
+            (ConnectionResetError("connection reset"), "CONNECTION_RESET"),
+            (ConnectionAbortedError("connection aborted"), "CONNECTION_ABORTED"),
+            (ssl.SSLError("certificate or TLS failure"), "TLS_ERROR"),
+        ]
+        for reason, expected_code in cases:
+            with self.subTest(expected_code=expected_code):
+                with (
+                    patch.object(scanner, "urlopen", side_effect=URLError(reason)),
+                    self.assertRaisesRegex(RuntimeError, f"error_code={expected_code}"),
+                ):
+                    scanner.fetch_draw(506, 1, max_retries=0, max_backoff=0)
+
+    def test_common_windows_socket_errors_have_specific_error_codes(self) -> None:
+        cases = {
+            10051: "NETWORK_UNREACHABLE",
+            10053: "CONNECTION_ABORTED",
+            10054: "CONNECTION_RESET",
+            10061: "CONNECTION_REFUSED",
+            10065: "HOST_UNREACHABLE",
+            11001: "DNS_ERROR",
+        }
+        for winerror, expected_code in cases.items():
+            reason = OSError("socket error")
+            reason.winerror = winerror
+            with self.subTest(winerror=winerror):
+                with (
+                    patch.object(scanner, "urlopen", side_effect=URLError(reason)),
+                    self.assertRaisesRegex(RuntimeError, f"error_code={expected_code}"),
+                ):
+                    scanner.fetch_draw(506, 1, max_retries=0, max_backoff=0)
 
     def test_invalid_json_keeps_error_code(self) -> None:
         with (

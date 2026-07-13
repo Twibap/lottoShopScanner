@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 import argparse
+import errno
 import logging
 import os
 import random
+import socket
+import ssl
 import sys
 import time
 from datetime import datetime, timezone
@@ -134,15 +137,51 @@ def exception_error_code(error: BaseException) -> str:
     if isinstance(error, TimeoutError):
         return "TIMEOUT"
     if isinstance(error, URLError):
-        reason = error.reason
-        if isinstance(reason, TimeoutError) or (
-            isinstance(reason, OSError) and getattr(reason, "winerror", None) == 10060
-        ):
-            return "CONNECTION_TIMEOUT"
-        return "URL_ERROR"
-    if isinstance(error, ConnectionError):
-        return "CONNECTION_ERROR"
+        return network_error_code(error.reason, fallback="URL_ERROR")
+    if isinstance(error, OSError):
+        return network_error_code(error, fallback="CONNECTION_ERROR")
     return type(error).__name__.upper()
+
+
+def network_error_code(error: object, fallback: str) -> str:
+    if isinstance(error, TimeoutError):
+        return "CONNECTION_TIMEOUT"
+    if isinstance(error, socket.gaierror):
+        return "DNS_ERROR"
+    if isinstance(error, ssl.SSLError):
+        return "TLS_ERROR"
+    if isinstance(error, ConnectionRefusedError):
+        return "CONNECTION_REFUSED"
+    if isinstance(error, ConnectionResetError):
+        return "CONNECTION_RESET"
+    if isinstance(error, ConnectionAbortedError):
+        return "CONNECTION_ABORTED"
+
+    winerror = getattr(error, "winerror", None)
+    winerror_codes = {
+        10051: "NETWORK_UNREACHABLE",
+        10053: "CONNECTION_ABORTED",
+        10054: "CONNECTION_RESET",
+        10060: "CONNECTION_TIMEOUT",
+        10061: "CONNECTION_REFUSED",
+        10065: "HOST_UNREACHABLE",
+        11001: "DNS_ERROR",
+        11002: "DNS_ERROR",
+        11004: "DNS_ERROR",
+    }
+    if winerror in winerror_codes:
+        return winerror_codes[winerror]
+
+    error_number = getattr(error, "errno", None)
+    errno_codes = {
+        errno.ECONNREFUSED: "CONNECTION_REFUSED",
+        errno.ECONNRESET: "CONNECTION_RESET",
+        errno.ECONNABORTED: "CONNECTION_ABORTED",
+        errno.ENETUNREACH: "NETWORK_UNREACHABLE",
+        errno.EHOSTUNREACH: "HOST_UNREACHABLE",
+        errno.ETIMEDOUT: "CONNECTION_TIMEOUT",
+    }
+    return errno_codes.get(error_number, fallback)
 
 
 def fetch_draw(
@@ -194,7 +233,7 @@ def fetch_draw(
             )
             exc.close()
             time.sleep(wait)
-        except (URLError, TimeoutError, ConnectionError, json.JSONDecodeError) as exc:
+        except (URLError, OSError, json.JSONDecodeError) as exc:
             error_code = exception_error_code(exc)
             if attempt == max_attempts:
                 raise RuntimeError(
