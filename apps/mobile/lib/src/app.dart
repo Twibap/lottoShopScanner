@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 
+import 'features/explore/data/location_service.dart';
 import 'features/explore/data/shop_repository.dart';
 import 'features/explore/presentation/explore_screen.dart';
 
 class LottoShopScannerApp extends StatelessWidget {
-  const LottoShopScannerApp({super.key, this.repository});
+  const LottoShopScannerApp({
+    super.key,
+    this.repository,
+    this.mapEnabled = false,
+    this.locationService,
+  });
 
   final ShopRepository? repository;
+  final bool mapEnabled;
+  final LocationService? locationService;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +29,11 @@ class LottoShopScannerApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF5F7F4),
         useMaterial3: true,
       ),
-      home: ExploreScreen(repository: repository ?? ApiShopRepository()),
+      home: ExploreScreen(
+        repository: repository ?? ApiShopRepository(),
+        mapEnabled: mapEnabled,
+        locationService: locationService ?? GeolocatorLocationService(),
+      ),
     );
   }
 }

@@ -1,27 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 
+import '../data/location_service.dart';
 import '../data/shop_repository.dart';
 import '../domain/shop.dart';
 
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({super.key, required this.repository});
+  const ExploreScreen({
+    super.key,
+    required this.repository,
+    required this.mapEnabled,
+    required this.locationService,
+  });
 
   final ShopRepository repository;
+  final bool mapEnabled;
+  final LocationService locationService;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  static const _latitude = 37.5665;
-  static const _longitude = 126.9780;
   static const _radii = [1000, 3000, 5000, 10000];
 
+  var _latitude = 37.5665;
+  var _longitude = 126.9780;
+  var _mapLatitude = 37.5665;
+  var _mapLongitude = 126.9780;
   var _radiusM = 3000;
   var _sort = ShopSort.distance;
   var _loading = true;
   String? _error;
   List<Shop> _shops = const [];
+  NaverMapController? _mapController;
 
   @override
   void initState() {
@@ -43,6 +55,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
       if (mounted) {
         setState(() => _shops = shops);
+        await _syncMarkers();
       }
     } on Exception catch (error) {
       if (mounted) {
@@ -55,6 +68,96 @@ class _ExploreScreenState extends State<ExploreScreen> {
         setState(() => _loading = false);
       }
     }
+  }
+
+  Future<void> _syncMarkers() async {
+    final controller = _mapController;
+    if (controller == null) return;
+    await controller.clearOverlays(type: NOverlayType.marker);
+    final markers = _shops.map((shop) {
+      return NMarker(
+        id: shop.id,
+        position: NLatLng(shop.latitude, shop.longitude),
+        caption: NOverlayCaption(text: '${shop.resultRank}위 ${shop.name}'),
+        iconTintColor: const Color(0xFF176B3A),
+      );
+    }).toSet();
+    await controller.addOverlayAll(markers);
+  }
+
+  Future<void> _moveToCurrentLocation() async {
+    try {
+      final coordinate = await widget.locationService.current();
+      _latitude = coordinate.latitude;
+      _longitude = coordinate.longitude;
+      _mapLatitude = coordinate.latitude;
+      _mapLongitude = coordinate.longitude;
+      await _mapController?.updateCamera(
+        NCameraUpdate.scrollAndZoomTo(
+          target: NLatLng(coordinate.latitude, coordinate.longitude),
+          zoom: 15,
+        ),
+      );
+      await _load();
+    } on LocationException catch (error) {
+      if (mounted) await _showLocationFailure(error.failure);
+    } on Exception {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('현재 위치를 확인하지 못했습니다.')));
+      }
+    }
+  }
+
+  Future<void> _showLocationFailure(LocationFailure failure) async {
+    final serviceDisabled = failure == LocationFailure.serviceDisabled;
+    final permanentlyDenied = failure == LocationFailure.deniedForever;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(serviceDisabled ? '위치 서비스가 꺼져 있습니다' : '위치 권한이 필요합니다'),
+        content: Text(
+          serviceDisabled
+              ? '기기의 위치 서비스를 켜거나 지역을 직접 검색해 주세요.'
+              : '위치는 주변 판매점 검색에만 사용하며 서버에 저장하지 않습니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          if (serviceDisabled || permanentlyDenied)
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                if (serviceDisabled) {
+                  widget.locationService.openLocationSettings();
+                } else {
+                  widget.locationService.openAppSettings();
+                }
+              },
+              child: const Text('설정 열기'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _searchMapCenter() async {
+    setState(() {
+      _latitude = _mapLatitude;
+      _longitude = _mapLongitude;
+    });
+    await _load();
+  }
+
+  Future<void> _captureMapCenter() async {
+    final controller = _mapController;
+    if (controller == null) return;
+    final target = (await controller.getCameraPosition()).target;
+    _mapLatitude = target.latitude;
+    _mapLongitude = target.longitude;
   }
 
   @override
@@ -76,8 +179,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const _SearchBar(),
-            _MapPlaceholder(onRefresh: _load),
+            _SearchBar(onCurrentLocation: _moveToCurrentLocation),
+            _MapPanel(
+              enabled: widget.mapEnabled,
+              initialLatitude: _latitude,
+              initialLongitude: _longitude,
+              onMapReady: (controller) {
+                _mapController = controller;
+                _syncMarkers();
+              },
+              onCameraIdle: _captureMapCenter,
+              onRefresh: _searchMapCenter,
+            ),
             _Filters(
               radiusM: _radiusM,
               sort: _sort,
@@ -142,7 +255,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 }
 
 class _SearchBar extends StatelessWidget {
-  const _SearchBar();
+  const _SearchBar({required this.onCurrentLocation});
+
+  final VoidCallback onCurrentLocation;
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +270,7 @@ class _SearchBar extends StatelessWidget {
           prefixIcon: const Icon(Icons.search),
           suffixIcon: IconButton(
             tooltip: '현재 위치',
-            onPressed: () {},
+            onPressed: onCurrentLocation,
             icon: const Icon(Icons.my_location),
           ),
           filled: true,
@@ -170,9 +285,21 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-class _MapPlaceholder extends StatelessWidget {
-  const _MapPlaceholder({required this.onRefresh});
+class _MapPanel extends StatelessWidget {
+  const _MapPanel({
+    required this.enabled,
+    required this.initialLatitude,
+    required this.initialLongitude,
+    required this.onMapReady,
+    required this.onCameraIdle,
+    required this.onRefresh,
+  });
 
+  final bool enabled;
+  final double initialLatitude;
+  final double initialLongitude;
+  final ValueChanged<NaverMapController> onMapReady;
+  final VoidCallback onCameraIdle;
   final VoidCallback onRefresh;
 
   @override
@@ -180,6 +307,7 @@ class _MapPlaceholder extends StatelessWidget {
     return Container(
       height: 180,
       margin: const EdgeInsets.symmetric(horizontal: 16),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFFDDE9DF),
         borderRadius: BorderRadius.circular(20),
@@ -187,7 +315,29 @@ class _MapPlaceholder extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          const Icon(Icons.map_outlined, size: 72, color: Color(0xFF6B8C73)),
+          if (enabled)
+            NaverMap(
+              options: NaverMapViewOptions(
+                initialCameraPosition: NCameraPosition(
+                  target: NLatLng(initialLatitude, initialLongitude),
+                  zoom: 14,
+                ),
+                locationButtonEnable: false,
+                scaleBarEnable: false,
+                contentPadding: const EdgeInsets.only(bottom: 52),
+              ),
+              onMapReady: onMapReady,
+              onCameraIdle: onCameraIdle,
+            )
+          else
+            const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.map_outlined, size: 54, color: Color(0xFF6B8C73)),
+                SizedBox(height: 6),
+                Text('NAVER_MAP_CLIENT_ID를 설정하면 지도가 표시됩니다.'),
+              ],
+            ),
           Positioned(
             bottom: 12,
             child: FilledButton.tonalIcon(

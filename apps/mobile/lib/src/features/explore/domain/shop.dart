@@ -3,6 +3,8 @@ class Shop {
     required this.id,
     required this.name,
     required this.address,
+    required this.latitude,
+    required this.longitude,
     required this.distanceM,
     required this.resultRank,
     required this.firstCount,
@@ -17,6 +19,8 @@ class Shop {
       id: json['shop_id'] as String,
       name: json['name'] as String,
       address: json['address'] as String,
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
       distanceM: intValue('distance_m'),
       resultRank: intValue('result_rank'),
       firstCount: intValue('first_count'),
@@ -29,6 +33,8 @@ class Shop {
   final String id;
   final String name;
   final String address;
+  final double latitude;
+  final double longitude;
   final int distanceM;
   final int resultRank;
   final int firstCount;
