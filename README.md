@@ -41,4 +41,26 @@ docker compose build data-collector
 docker compose config --quiet
 ```
 
+## PostgreSQL 적재 및 랭킹 테이블
+
+PostgreSQL을 시작한 뒤 수집된 JSONL을 적재하고 랭킹을 갱신합니다.
+
+```powershell
+docker compose up -d postgres
+docker compose run --build --rm db-loader
+```
+
+로컬 개발 기본 접속 정보는 데이터베이스·사용자 `lotto`, 포트 `5432`입니다. 비밀번호와
+포트는 `.env`의 `POSTGRES_PASSWORD`, `POSTGRES_PORT` 등으로 변경할 수 있습니다.
+
+주요 테이블은 다음과 같습니다.
+
+- `draw_results`: 회차별 1·2등 당첨금과 원본 응답
+- `shops`: `ltShpId` 기준 최신 판매점 정보
+- `winning_events`: 당첨 게임별 판매점, 등수 및 당첨금
+- `shop_statistics`: 1등·2등 횟수, 총 당첨금과 공동 순위
+
+적재 대상 회차의 이벤트는 트랜잭션 안에서 원본과 동일하게 교체되고 판매점과 회차는
+upsert되므로, 같은 명령을 다시 실행해도 당첨 이벤트가 중복되지 않습니다.
+
 GitHub Actions는 `apps/data-collector/**`, `compose.yaml` 또는 워크플로 자체가 변경될 때 테스트와 컨테이너 빌드를 실행합니다. 이후 앱별 워크플로를 같은 방식으로 분리할 수 있습니다.

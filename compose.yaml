@@ -1,9 +1,48 @@
 name: lotto-shop-scanner
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lotto}
+      POSTGRES_USER: ${POSTGRES_USER:-lotto}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lotto-local-password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   data-collector:
     build:
       context: ./apps/data-collector
     image: lotto-shop-scanner/data-collector:local
     volumes:
       - ./apps/data-collector/output:/app/output
+
+  db-loader:
+    build:
+      context: ./apps/data-collector
+    image: lotto-shop-scanner/data-collector:local
+    entrypoint: ["python", "src/load_rankings_to_postgres.py"]
+    command:
+      - --shops
+      - /app/output/winning_shops.jsonl
+      - --draw-results
+      - /app/output/draw_results.jsonl
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lotto}:${POSTGRES_PASSWORD:-lotto-local-password}@postgres:5432/${POSTGRES_DB:-lotto}
+    volumes:
+      - ./apps/data-collector/output:/app/output:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["tools"]
+
+volumes:
+  postgres-data:

@@ -17,6 +17,45 @@ python .\src\fetch_draw_results.py 1230 1232 `
   --delay 1 --max-delay 2.5
 ```
 
+## 판매점 랭킹 생성
+
+당첨 판매점과 회차별 당첨금 JSONL을 결합해 판매점별 1등 횟수, 2등 횟수,
+총 당첨금 및 각 항목의 순위를 생성합니다.
+
+```powershell
+python .\src\build_shop_rankings.py
+```
+
+기본 입력은 `output/winning_shops.jsonl`, `output/draw_results.jsonl`이고 결과는
+`output/shop_rankings.jsonl`에 저장됩니다. 다른 파일을 사용하려면 다음처럼 지정합니다.
+
+```powershell
+python .\src\build_shop_rankings.py `
+  --shops .\output\winning_shops.jsonl `
+  --draw-results .\output\draw_results.jsonl `
+  --output .\output\shop_rankings.jsonl
+```
+
+동일 판매점은 `ltShpId`로 묶으며, 같은 회차에 같은 판매점이 여러 번 등장하면 각각의
+당첨 게임으로 집계합니다. 상호와 주소는 가장 최근 당첨 회차의 정보를 사용합니다.
+동률은 공동 순위를 부여하고 다음 순위를 건너뛰는 경쟁 순위 방식(`1, 2, 2, 4`)입니다.
+
+## PostgreSQL 적재
+
+저장소 루트에서 PostgreSQL을 시작하고 적재 도구를 실행합니다.
+
+```powershell
+docker compose up -d postgres
+docker compose run --build --rm db-loader
+```
+
+호스트 Python으로 직접 실행하려면 `requirements.txt`를 설치하고 접속 URL을 지정합니다.
+
+```powershell
+python .\src\load_rankings_to_postgres.py `
+  --database-url postgresql://lotto:lotto-local-password@localhost:5432/lotto
+```
+
 회차 하나만 전달하면 해당 회차만 조회합니다.
 
 ```powershell
