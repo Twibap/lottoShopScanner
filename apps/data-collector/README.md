@@ -1,5 +1,22 @@
 # 동행복권 당첨 판매점 수집
 
+## 회차별 추첨 결과 및 당첨금 수집
+
+회차별 당첨번호와 1~5등의 당첨 게임 수, 1게임당 당첨금, 총 당첨금을 수집합니다.
+
+```powershell
+python .\src\fetch_draw_results.py 1 1232
+```
+
+기본 출력은 `output/draw_results.jsonl`이며, 중단 후 같은 명령을 다시 실행하면 이미 저장된
+`ltEpsd` 회차를 건너뛰고 이어서 수집합니다. 출력 경로와 요청 간격도 지정할 수 있습니다.
+
+```powershell
+python .\src\fetch_draw_results.py 1230 1232 `
+  --output .\output\draw_results.jsonl `
+  --delay 1 --max-delay 2.5
+```
+
 회차 하나만 전달하면 해당 회차만 조회합니다.
 
 ```powershell
