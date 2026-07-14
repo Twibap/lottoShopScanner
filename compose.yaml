@@ -2,7 +2,7 @@ name: lotto-shop-scanner
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgis/postgis:17-3.5-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-lotto}
       POSTGRES_USER: ${POSTGRES_USER:-lotto}
@@ -43,6 +43,18 @@ services:
       postgres:
         condition: service_healthy
     profiles: ["tools"]
+
+  backend:
+    build:
+      context: ./apps/backend
+    image: lotto-shop-scanner/backend:local
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lotto}:${POSTGRES_PASSWORD:-lotto-local-password}@postgres:5432/${POSTGRES_DB:-lotto}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres-data:

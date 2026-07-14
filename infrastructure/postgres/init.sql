@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS postgis;
+
 CREATE TABLE IF NOT EXISTS draw_results (
     draw INTEGER PRIMARY KEY CHECK (draw > 0),
     draw_date DATE NOT NULL,
@@ -57,3 +59,30 @@ CREATE INDEX IF NOT EXISTS shop_statistics_first_rank_idx ON shop_statistics (fi
 CREATE INDEX IF NOT EXISTS shop_statistics_second_rank_idx ON shop_statistics (second_rank, shop_id);
 CREATE INDEX IF NOT EXISTS shop_statistics_total_prize_rank_idx
     ON shop_statistics (total_prize_rank, shop_id);
+
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS location_quality TEXT
+    GENERATED ALWAYS AS (
+        CASE
+            WHEN shop_id = '51100000' THEN 'non_physical'
+            WHEN latitude IS NULL OR longitude IS NULL THEN 'missing'
+            WHEN latitude = 0 AND longitude = 0 THEN 'zero'
+            WHEN latitude < 32 OR latitude > 39 OR longitude < 124 OR longitude > 132
+                THEN 'outside_korea'
+            ELSE 'valid'
+        END
+    ) STORED;
+
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS location geography(Point, 4326)
+    GENERATED ALWAYS AS (
+        CASE
+            WHEN shop_id <> '51100000'
+                AND latitude BETWEEN 32 AND 39
+                AND longitude BETWEEN 124 AND 132
+                AND NOT (latitude = 0 AND longitude = 0)
+            THEN ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
+            ELSE NULL
+        END
+    ) STORED;
+
+CREATE INDEX IF NOT EXISTS shops_location_gist_idx ON shops USING GIST (location)
+    WHERE location IS NOT NULL;
