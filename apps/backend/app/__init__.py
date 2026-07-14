@@ -1,0 +1,1 @@
+"""Lotto Shop Scanner API."""

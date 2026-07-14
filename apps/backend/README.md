@@ -1,0 +1,33 @@
+# Backend API
+
+PostGIS-backed read API for nearby lotto shops.
+
+## Run locally
+
+```powershell
+docker compose up --build postgres backend
+```
+
+If the PostgreSQL volume was created before PostGIS support was added, apply the
+idempotent schema once before starting the backend:
+
+```powershell
+docker compose exec -T postgres psql -U lotto -d lotto `
+  -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/001-init.sql
+```
+
+OpenAPI documentation is available at `http://localhost:8000/docs`.
+
+```text
+GET /v1/shops/nearby?lat=37.5665&lng=126.9780&radius_m=3000&sort=distance&limit=30
+```
+
+Supported sort values are `distance`, `first_wins`, `second_wins`, `total_prize`,
+and `recent_win`. Radius is limited to 0–10,000 metres and page size to 1–100.
+Only physical shops with coordinates inside the accepted South Korea bounds are indexed.
+
+## Test
+
+```powershell
+python -m unittest discover -s apps/backend/tests -v
+```
