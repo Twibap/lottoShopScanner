@@ -40,6 +40,10 @@ C:\Users\Twibap\flutter\bin\flutter.bat run `
   --dart-define=SUPPORT_EMAIL=support@example.com
 ```
 
+For tester delivery builds, use the checklist in `docs/test-release.md`. Do not
+ship builds that point `API_BASE_URL` to `localhost`, `127.0.0.1`, or
+`10.0.2.2`; those addresses are for local development only.
+
 Local cleartext HTTP is enabled only in the Android debug manifest. Production
 builds must use HTTPS.
 

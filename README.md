@@ -41,6 +41,13 @@ docker compose build data-collector
 docker compose config --quiet
 ```
 
+## 테스트 사용자 전달
+
+실기기 테스트 사용자에게 앱을 전달하기 위한 배포용 환경값, 테스트 백엔드 준비,
+Android APK/AAB와 iOS TestFlight 절차는 [테스트 사용자 전달 준비](docs/test-release.md)를
+기준으로 진행합니다. 비밀값은 `.env`에만 보관하고, 새 환경에서는 `.env.example`을
+복사해 실제 값을 채웁니다.
+
 ## PostgreSQL 적재 및 랭킹 테이블
 
 PostgreSQL을 시작한 뒤 수집된 JSONL을 적재하고 랭킹을 갱신합니다.
