@@ -31,6 +31,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   var _radiusM = 3000;
   var _sort = ShopSort.distance;
   var _loading = true;
+  String _searchLabel = '서울시청 주변';
   String? _error;
   List<Shop> _shops = const [];
   NaverMapController? _mapController;
@@ -92,6 +93,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _longitude = coordinate.longitude;
       _mapLatitude = coordinate.latitude;
       _mapLongitude = coordinate.longitude;
+      _searchLabel = '현재 위치 주변';
       await _mapController?.updateCamera(
         NCameraUpdate.scrollAndZoomTo(
           target: NLatLng(coordinate.latitude, coordinate.longitude),
@@ -148,7 +150,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
     setState(() {
       _latitude = _mapLatitude;
       _longitude = _mapLongitude;
+      _searchLabel = '지도 중심 주변';
     });
+    await _load();
+  }
+
+  Future<void> _openPlaceSearch() async {
+    final place = await showModalBottomSheet<PlaceSearchResult>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _PlaceSearchSheet(repository: widget.repository),
+    );
+    if (place == null) return;
+    _latitude = place.latitude;
+    _longitude = place.longitude;
+    _mapLatitude = place.latitude;
+    _mapLongitude = place.longitude;
+    _searchLabel = place.title;
+    await _mapController?.updateCamera(
+      NCameraUpdate.scrollAndZoomTo(
+        target: NLatLng(place.latitude, place.longitude),
+        zoom: 15,
+      ),
+    );
     await _load();
   }
 
@@ -179,7 +204,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _SearchBar(onCurrentLocation: _moveToCurrentLocation),
+            _SearchBar(
+              onSearch: _openPlaceSearch,
+              onCurrentLocation: _moveToCurrentLocation,
+            ),
             _MapPanel(
               enabled: widget.mapEnabled,
               initialLatitude: _latitude,
@@ -242,7 +270,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
-                '현재 반경 내 ${_shops.length}곳 · ${_sort.label}',
+                '$_searchLabel · 현재 반경 내 ${_shops.length}곳 · ${_sort.label}',
                 style: Theme.of(context).textTheme.labelLarge,
               ),
             );
@@ -255,8 +283,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 }
 
 class _SearchBar extends StatelessWidget {
-  const _SearchBar({required this.onCurrentLocation});
+  const _SearchBar({required this.onSearch, required this.onCurrentLocation});
 
+  final VoidCallback onSearch;
   final VoidCallback onCurrentLocation;
 
   @override
@@ -265,8 +294,9 @@ class _SearchBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: TextField(
         readOnly: true,
+        onTap: onSearch,
         decoration: InputDecoration(
-          hintText: '지역이나 주소 검색',
+          hintText: '지역, 주소, 판매점 검색',
           prefixIcon: const Icon(Icons.search),
           suffixIcon: IconButton(
             tooltip: '현재 위치',
@@ -281,6 +311,130 @@ class _SearchBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PlaceSearchSheet extends StatefulWidget {
+  const _PlaceSearchSheet({required this.repository});
+
+  final ShopRepository repository;
+
+  @override
+  State<_PlaceSearchSheet> createState() => _PlaceSearchSheetState();
+}
+
+class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
+  final _controller = TextEditingController();
+  var _loading = false;
+  String? _error;
+  List<PlaceSearchResult> _results = const [];
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final query = _controller.text.trim();
+    if (query.length < 2) {
+      setState(() {
+        _error = '두 글자 이상 입력해 주세요.';
+        _results = const [];
+      });
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final results = await widget.repository.searchPlaces(query: query);
+      if (mounted) setState(() => _results = results);
+    } on Exception catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = error.toString().replaceFirst('HttpException: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (_) => _search(),
+            decoration: InputDecoration(
+              hintText: '지역, 주소, 판매점명',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: IconButton(
+                tooltip: '검색',
+                onPressed: _search,
+                icon: const Icon(Icons.arrow_forward),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(height: 360, child: _buildBody()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return _MessageState(
+        icon: Icons.search_off,
+        title: _error!,
+        actionLabel: '다시 검색',
+        onAction: _search,
+      );
+    }
+    if (_results.isEmpty) {
+      return const Center(child: Text('검색어를 입력하면 지역, 주소, 판매점을 찾습니다.'));
+    }
+    return ListView.separated(
+      itemCount: _results.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final result = _results[index];
+        return ListTile(
+          leading: const Icon(Icons.place_outlined),
+          title: Text(
+            result.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                result.address,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                result.source == 'naver' ? 'NAVER 주소 검색' : '판매점 데이터',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+          onTap: () => Navigator.pop(context, result),
+        );
+      },
     );
   }
 }

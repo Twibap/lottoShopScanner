@@ -51,6 +51,8 @@ services:
     image: lotto-shop-scanner/backend:local
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-lotto}:${POSTGRES_PASSWORD:-lotto-local-password}@postgres:5432/${POSTGRES_DB:-lotto}
+      NAVER_GEOCODE_CLIENT_ID: ${NAVER_GEOCODE_CLIENT_ID:-}
+      NAVER_GEOCODE_CLIENT_SECRET: ${NAVER_GEOCODE_CLIENT_SECRET:-}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:

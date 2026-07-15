@@ -79,3 +79,48 @@ def fetch_nearby(
         cursor.execute(nearby_query(sort), params)
         columns = [column.name for column in cursor.description]
         return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
+
+
+def search_places_query() -> str:
+    return """
+WITH matches AS (
+SELECT
+    s.shop_id AS place_id,
+    s.name AS title,
+    s.address,
+    s.latitude,
+    s.longitude,
+    'shop' AS source,
+    CASE
+        WHEN lower(s.name) = lower(%(query)s) THEN 0
+        WHEN lower(s.name) LIKE lower(%(prefix_pattern)s) THEN 1
+        WHEN lower(s.address) LIKE lower(%(prefix_pattern)s) THEN 2
+        ELSE 3
+    END AS match_rank
+FROM shops s
+WHERE s.location IS NOT NULL
+  AND (
+      s.name ILIKE %(pattern)s
+      OR s.address ILIKE %(pattern)s
+      OR s.region ILIKE %(pattern)s
+  )
+ORDER BY match_rank, s.latest_draw DESC, s.name ASC, s.shop_id ASC
+LIMIT %(limit)s
+)
+SELECT place_id, title, address, latitude, longitude, source
+FROM matches
+"""
+
+
+def search_places(connection: Any, *, query: str, limit: int) -> list[dict[str, Any]]:
+    normalized = " ".join(query.strip().split())
+    params = {
+        "query": normalized,
+        "pattern": f"%{normalized}%",
+        "prefix_pattern": f"{normalized}%",
+        "limit": limit,
+    }
+    with connection.cursor() as cursor:
+        cursor.execute(search_places_query(), params)
+        columns = [column.name for column in cursor.description]
+        return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]

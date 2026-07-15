@@ -26,6 +26,16 @@ Supported sort values are `distance`, `first_wins`, `second_wins`, `total_prize`
 and `recent_win`. Radius is limited to 0–10,000 metres and page size to 1–100.
 Only physical shops with coordinates inside the accepted South Korea bounds are indexed.
 
+Place search is available at:
+
+```text
+GET /v1/places/search?q=서울%20중구&limit=10
+```
+
+If `NAVER_GEOCODE_CLIENT_ID` and `NAVER_GEOCODE_CLIENT_SECRET` are set, NAVER
+address geocoding results are returned before shop database matches. Without
+those variables, search falls back to shop name, address, and region matches.
+
 ## Test
 
 ```powershell

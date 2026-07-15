@@ -8,7 +8,8 @@ import psycopg
 from fastapi import Depends, FastAPI, HTTPException, Query
 
 from .cursor import decode_cursor, encode_cursor
-from .repository import fetch_nearby
+from .geocoding import GeocodingUnavailable, search_naver_addresses
+from .repository import fetch_nearby, search_places
 
 
 DATABASE_URL = os.environ.get(
@@ -26,6 +27,24 @@ def database_connection() -> Generator[psycopg.Connection, None, None]:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/v1/places/search")
+def place_search(
+    q: Annotated[str, Query(min_length=2, max_length=80)],
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
+    connection: psycopg.Connection = Depends(database_connection),
+) -> dict[str, object]:
+    try:
+        external_items = search_naver_addresses(q, limit=limit)
+    except GeocodingUnavailable:
+        external_items = []
+    remaining = max(0, limit - len(external_items))
+    shop_items = search_places(connection, query=q, limit=remaining) if remaining else []
+    return {
+        "items": [*external_items, *shop_items],
+        "query": q,
+    }
 
 
 @app.get("/v1/shops/nearby")
