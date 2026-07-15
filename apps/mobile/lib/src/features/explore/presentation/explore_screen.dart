@@ -108,8 +108,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final controller = _mapController;
     if (controller == null) return;
     await controller.clearOverlays(type: NOverlayType.marker);
+    await controller.clearOverlays(type: NOverlayType.clusterableMarker);
     final markers = _shops.map((shop) {
-      final marker = NMarker(
+      final marker = NClusterableMarker(
         id: shop.id,
         position: NLatLng(shop.latitude, shop.longitude),
         caption: NOverlayCaption(text: '${shop.resultRank}위 ${shop.name}'),
@@ -693,6 +694,26 @@ class _MapPanel extends StatelessWidget {
         children: [
           if (enabled)
             NaverMap(
+              clusterOptions: NaverMapClusteringOptions(
+                mergeStrategy: const NClusterMergeStrategy(
+                  maxMergeableScreenDistance: 100,
+                  willMergedScreenDistance: {
+                    NInclusiveRange(0, 15): 100,
+                    NInclusiveRange(16, 17): 65,
+                    NInclusiveRange(18, 20): 35,
+                  },
+                ),
+                clusterMarkerBuilder: (info, clusterMarker) {
+                  clusterMarker.setIconTintColor(const Color(0xFF176B3A));
+                  clusterMarker.setCaption(
+                    NOverlayCaption(
+                      text: '${info.size}',
+                      color: Colors.white,
+                      haloColor: const Color(0xFF176B3A),
+                    ),
+                  );
+                },
+              ),
               options: NaverMapViewOptions(
                 initialCameraPosition: NCameraPosition(
                   target: NLatLng(initialLatitude, initialLongitude),
