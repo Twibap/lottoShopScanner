@@ -63,3 +63,17 @@ a future Flutter version may turn this warning into a build failure.
 C:\Users\Twibap\flutter\bin\flutter.bat analyze
 C:\Users\Twibap\flutter\bin\flutter.bat test
 ```
+
+### Native map integration tests
+
+The native map tests verify that shop markers are registered on the platform
+map and that dense markers merge at zoom 15 and split back into individual
+markers at zoom 21. Run them with a NAVER Dynamic Map client ID:
+
+```bash
+flutter test integration_test/map_interaction_test.dart \
+  -d <device-id> \
+  --dart-define="NAVER_MAP_CLIENT_ID=$NAVER_MAP_CLIENT_ID"
+```
+
+Use `flutter devices` to find an Android device or iOS simulator ID.
