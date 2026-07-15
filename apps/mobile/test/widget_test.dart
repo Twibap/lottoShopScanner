@@ -107,7 +107,9 @@ class FakeLocationService implements LocationService {
 }
 
 void main() {
-  testWidgets('shows nearby shop results and ranking filters', (tester) async {
+  testWidgets('starts with a map-first layout and opens nearby results', (
+    tester,
+  ) async {
     final repository = FakeShopRepository();
     await tester.pumpWidget(
       LottoShopScannerApp(
@@ -117,12 +119,40 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('내 주변 복권판매점'), findsOneWidget);
+    expect(find.text('현재 위치 주변'), findsNothing);
+    expect(repository.lastLatitude, 35.1796);
+    expect(find.byTooltip('탐색 메뉴'), findsOneWidget);
+    expect(find.text('이 지역 다시 검색'), findsOneWidget);
+    expect(tester.getCenter(find.text('이 지역 다시 검색')).dy, lessThan(80));
+    expect(find.text('행운복권'), findsNothing);
+
+    final initialFabCenter = tester.getCenter(find.byTooltip('탐색 메뉴'));
+    await tester.drag(find.byTooltip('탐색 메뉴'), const Offset(-120, -140));
+    await tester.pumpAndSettle();
+    final movedFabCenter = tester.getCenter(find.byTooltip('탐색 메뉴'));
+    expect(movedFabCenter.dx, lessThan(initialFabCenter.dx));
+    expect(movedFabCenter.dy, lessThan(initialFabCenter.dy));
+
+    await tester.tap(find.byTooltip('탐색 메뉴'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('현재 기준 · 현재 위치 주변'), findsOneWidget);
+    expect(find.text('지역 검색'), findsOneWidget);
+    expect(find.text('현재 위치로 이동'), findsOneWidget);
+    await tester.ensureVisible(find.text('주변 판매점'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('주변 판매점'));
+    await tester.pumpAndSettle();
+
     expect(find.text('행운복권'), findsOneWidget);
     expect(find.text('250m'), findsOneWidget);
     expect(find.text('당첨금 순'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('현재 위치'));
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('탐색 메뉴'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('현재 위치로 이동'));
     await tester.pumpAndSettle();
     expect(repository.lastLatitude, 35.1796);
     expect(find.text('현재 위치를 기준으로 검색했습니다.'), findsOneWidget);
@@ -140,8 +170,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('지역, 주소, 판매점 검색'), findsOneWidget);
-    await tester.tap(find.byType(TextField).first);
+    await tester.tap(find.byTooltip('탐색 메뉴'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('지역 검색'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(EditableText).last, '부산시청');
     await tester.testTextInput.receiveAction(TextInputAction.search);
@@ -152,6 +183,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.lastLatitude, 35.1796);
+    await tester.tap(find.byTooltip('탐색 메뉴'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('부산시청'), findsOneWidget);
   });
 
@@ -165,6 +198,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byTooltip('탐색 메뉴'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('주변 판매점'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('주변 판매점'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('행운복권'));
     await tester.pumpAndSettle();
 

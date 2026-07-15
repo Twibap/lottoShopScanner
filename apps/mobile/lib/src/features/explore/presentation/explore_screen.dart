@@ -26,6 +26,7 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   static const _radii = [1000, 3000, 5000, 10000];
+  static const _fabSize = Size(112, 56);
 
   var _latitude = 37.5665;
   var _longitude = 126.9780;
@@ -38,11 +39,40 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String? _error;
   List<Shop> _shops = const [];
   NaverMapController? _mapController;
+  UserCoordinate? _currentLocation;
+  Offset? _fabPosition;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _initializeFromCurrentLocation();
+  }
+
+  Future<void> _initializeFromCurrentLocation() async {
+    try {
+      final coordinate = await widget.locationService.current();
+      if (!mounted) return;
+      setState(() {
+        _currentLocation = coordinate;
+        _latitude = coordinate.latitude;
+        _longitude = coordinate.longitude;
+        _mapLatitude = coordinate.latitude;
+        _mapLongitude = coordinate.longitude;
+        _searchLabel = '현재 위치 주변';
+      });
+      await _mapController?.updateCamera(
+        NCameraUpdate.scrollAndZoomTo(
+          target: NLatLng(coordinate.latitude, coordinate.longitude),
+          zoom: 15,
+        ),
+      );
+      _syncCurrentLocationOverlay();
+    } on LocationException {
+      // Keep the default Seoul City Hall coordinate when location is unavailable.
+    } on Exception {
+      // A location failure must not prevent the initial nearby-shop search.
+    }
+    await _load();
   }
 
   Future<void> _load() async {
@@ -79,12 +109,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (controller == null) return;
     await controller.clearOverlays(type: NOverlayType.marker);
     final markers = _shops.map((shop) {
-      return NMarker(
+      final marker = NMarker(
         id: shop.id,
         position: NLatLng(shop.latitude, shop.longitude),
         caption: NOverlayCaption(text: '${shop.resultRank}위 ${shop.name}'),
         iconTintColor: const Color(0xFF176B3A),
       );
+      marker.setOnTapListener((_) {
+        if (mounted) _openShopDetail(shop);
+      });
+      return marker;
     }).toSet();
     await controller.addOverlayAll(markers);
   }
@@ -93,6 +127,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     try {
       final coordinate = await widget.locationService.current();
       setState(() {
+        _currentLocation = coordinate;
         _latitude = coordinate.latitude;
         _longitude = coordinate.longitude;
         _mapLatitude = coordinate.latitude;
@@ -105,6 +140,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           zoom: 15,
         ),
       );
+      _syncCurrentLocationOverlay();
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(
@@ -202,6 +238,145 @@ class _ExploreScreenState extends State<ExploreScreen> {
     _mapLongitude = target.longitude;
   }
 
+  void _syncCurrentLocationOverlay() {
+    final controller = _mapController;
+    final coordinate = _currentLocation;
+    if (controller == null || coordinate == null) return;
+    final overlay = controller.getLocationOverlay();
+    overlay.setPosition(NLatLng(coordinate.latitude, coordinate.longitude));
+    overlay.setIsVisible(true);
+  }
+
+  Future<void> _openResultsSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          Future<void> reload() async {
+            setSheetState(() {});
+            await _load();
+            if (context.mounted) setSheetState(() {});
+          }
+
+          return FractionallySizedBox(
+            heightFactor: 0.82,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                  child: Text(
+                    '주변 판매점',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                _Filters(
+                  radiusM: _radiusM,
+                  sort: _sort,
+                  radii: _radii,
+                  onRadiusChanged: (value) {
+                    setState(() => _radiusM = value);
+                    reload();
+                  },
+                  onSortChanged: (value) {
+                    setState(() => _sort = value);
+                    reload();
+                  },
+                ),
+                Expanded(child: _buildResults()),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _openActionMenu() async {
+    final action = await showModalBottomSheet<_ExploreAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.place_outlined),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '탐색 메뉴',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          Text(
+                            '현재 기준 · $_searchLabel',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _ActionMenuTile(
+                icon: Icons.search,
+                title: '지역 검색',
+                subtitle: '지역, 주소, 판매점명으로 찾기',
+                action: _ExploreAction.search,
+              ),
+              _ActionMenuTile(
+                icon: Icons.my_location,
+                title: '현재 위치로 이동',
+                subtitle: '내 위치 주변의 판매점 찾기',
+                action: _ExploreAction.currentLocation,
+              ),
+              _ActionMenuTile(
+                icon: Icons.list_alt,
+                title: '주변 판매점',
+                subtitle: _loading
+                    ? '판매점을 검색하는 중입니다'
+                    : '현재 반경 내 ${_shops.length}곳 · ${_sort.label}',
+                action: _ExploreAction.results,
+              ),
+              _ActionMenuTile(
+                icon: Icons.info_outline,
+                title: '랭킹 기준 안내',
+                subtitle: '순위 산정 기준과 데이터 안내',
+                action: _ExploreAction.rankingInfo,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _ExploreAction.search:
+        await _openPlaceSearch();
+      case _ExploreAction.currentLocation:
+        await _moveToCurrentLocation();
+      case _ExploreAction.results:
+        await _openResultsSheet();
+      case _ExploreAction.rankingInfo:
+        await showDialog<void>(
+          context: context,
+          builder: (context) => const _RankingNotice(),
+        );
+    }
+  }
+
   void _openShopDetail(Shop shop) {
     Navigator.push(
       context,
@@ -222,53 +397,80 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('내 주변 복권판매점'),
-        actions: [
-          IconButton(
-            tooltip: '랭킹 기준 안내',
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (context) => const _RankingNotice(),
-            ),
-            icon: const Icon(Icons.info_outline),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _SearchBar(
-              onSearch: _openPlaceSearch,
-              onCurrentLocation: _moveToCurrentLocation,
-            ),
-            _MapPanel(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: _MapPanel(
               enabled: widget.mapEnabled,
               initialLatitude: _latitude,
               initialLongitude: _longitude,
               onMapReady: (controller) {
                 _mapController = controller;
+                _syncCurrentLocationOverlay();
                 _syncMarkers();
               },
               onCameraIdle: _captureMapCenter,
-              onRefresh: _searchMapCenter,
             ),
-            _Filters(
-              radiusM: _radiusM,
-              sort: _sort,
-              radii: _radii,
-              onRadiusChanged: (value) {
-                setState(() => _radiusM = value);
-                _load();
-              },
-              onSortChanged: (value) {
-                setState(() => _sort = value);
-                _load();
-              },
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxX = constraints.maxWidth - _fabSize.width;
+                  final maxY = constraints.maxHeight - _fabSize.height;
+                  final position = Offset(
+                    (_fabPosition?.dx ?? maxX).clamp(0.0, maxX),
+                    (_fabPosition?.dy ?? maxY).clamp(0.0, maxY),
+                  );
+                  return Stack(
+                    children: [
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: FilledButton.tonalIcon(
+                          onPressed: _loading ? null : _searchMapCenter,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('이 지역 다시 검색'),
+                        ),
+                      ),
+                      Positioned(
+                        left: position.dx,
+                        top: position.dy,
+                        width: _fabSize.width,
+                        height: _fabSize.height,
+                        child: GestureDetector(
+                          onPanUpdate: (details) {
+                            setState(() {
+                              _fabPosition = Offset(
+                                (position.dx + details.delta.dx).clamp(
+                                  0.0,
+                                  maxX,
+                                ),
+                                (position.dy + details.delta.dy).clamp(
+                                  0.0,
+                                  maxY,
+                                ),
+                              );
+                            });
+                          },
+                          child: FloatingActionButton.extended(
+                            heroTag: 'explore-menu',
+                            tooltip: '탐색 메뉴',
+                            onPressed: _openActionMenu,
+                            icon: const Icon(Icons.menu),
+                            label: Text(
+                              _loading ? '검색 중' : '${_shops.length}곳',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
-            Expanded(child: _buildResults()),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -316,35 +518,29 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 }
 
-class _SearchBar extends StatelessWidget {
-  const _SearchBar({required this.onSearch, required this.onCurrentLocation});
+enum _ExploreAction { search, currentLocation, results, rankingInfo }
 
-  final VoidCallback onSearch;
-  final VoidCallback onCurrentLocation;
+class _ActionMenuTile extends StatelessWidget {
+  const _ActionMenuTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final _ExploreAction action;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: TextField(
-        readOnly: true,
-        onTap: onSearch,
-        decoration: InputDecoration(
-          hintText: '지역, 주소, 판매점 검색',
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: IconButton(
-            tooltip: '현재 위치',
-            onPressed: onCurrentLocation,
-            icon: const Icon(Icons.my_location),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
+    return ListTile(
+      leading: CircleAvatar(child: Icon(icon)),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.pop(context, action),
     );
   }
 }
@@ -480,7 +676,6 @@ class _MapPanel extends StatelessWidget {
     required this.initialLongitude,
     required this.onMapReady,
     required this.onCameraIdle,
-    required this.onRefresh,
   });
 
   final bool enabled;
@@ -488,18 +683,11 @@ class _MapPanel extends StatelessWidget {
   final double initialLongitude;
   final ValueChanged<NaverMapController> onMapReady;
   final VoidCallback onCameraIdle;
-  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 180,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: const Color(0xFFDDE9DF),
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return ColoredBox(
+      color: const Color(0xFFDDE9DF),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -512,7 +700,7 @@ class _MapPanel extends StatelessWidget {
                 ),
                 locationButtonEnable: false,
                 scaleBarEnable: false,
-                contentPadding: const EdgeInsets.only(bottom: 52),
+                contentPadding: EdgeInsets.zero,
               ),
               onMapReady: onMapReady,
               onCameraIdle: onCameraIdle,
@@ -540,14 +728,6 @@ class _MapPanel extends StatelessWidget {
                 ),
               ),
             ),
-          Positioned(
-            bottom: 12,
-            child: FilledButton.tonalIcon(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh),
-              label: const Text('이 지역 다시 검색'),
-            ),
-          ),
         ],
       ),
     );
