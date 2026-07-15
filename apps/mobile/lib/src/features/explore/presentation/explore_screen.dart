@@ -13,12 +13,16 @@ class ExploreScreen extends StatefulWidget {
     required this.mapEnabled,
     required this.locationService,
     this.supportEmail = '',
+    this.onMapReady,
+    this.onMarkersSynced,
   });
 
   final ShopRepository repository;
   final bool mapEnabled;
   final LocationService locationService;
   final String supportEmail;
+  final ValueChanged<NaverMapController>? onMapReady;
+  final VoidCallback? onMarkersSynced;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -39,6 +43,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String? _error;
   List<Shop> _shops = const [];
   NaverMapController? _mapController;
+  var _mapLoaded = false;
   UserCoordinate? _currentLocation;
   Offset? _fabPosition;
 
@@ -106,7 +111,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Future<void> _syncMarkers() async {
     final controller = _mapController;
-    if (controller == null) return;
+    if (controller == null || !_mapLoaded) return;
     await controller.clearOverlays(type: NOverlayType.marker);
     await controller.clearOverlays(type: NOverlayType.clusterableMarker);
     final markers = _shops.map((shop) {
@@ -122,6 +127,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       return marker;
     }).toSet();
     await controller.addOverlayAll(markers);
+    widget.onMarkersSynced?.call();
   }
 
   Future<void> _moveToCurrentLocation() async {
@@ -407,7 +413,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
               initialLongitude: _longitude,
               onMapReady: (controller) {
                 _mapController = controller;
+                widget.onMapReady?.call(controller);
                 _syncCurrentLocationOverlay();
+              },
+              onMapLoaded: () {
+                _mapLoaded = true;
                 _syncMarkers();
               },
               onCameraIdle: _captureMapCenter,
@@ -676,6 +686,7 @@ class _MapPanel extends StatelessWidget {
     required this.initialLatitude,
     required this.initialLongitude,
     required this.onMapReady,
+    required this.onMapLoaded,
     required this.onCameraIdle,
   });
 
@@ -683,6 +694,7 @@ class _MapPanel extends StatelessWidget {
   final double initialLatitude;
   final double initialLongitude;
   final ValueChanged<NaverMapController> onMapReady;
+  final VoidCallback onMapLoaded;
   final VoidCallback onCameraIdle;
 
   @override
@@ -724,6 +736,7 @@ class _MapPanel extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
               ),
               onMapReady: onMapReady,
+              onMapLoaded: onMapLoaded,
               onCameraIdle: onCameraIdle,
             )
           else
