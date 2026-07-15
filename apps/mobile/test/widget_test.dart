@@ -125,6 +125,7 @@ void main() {
     await tester.tap(find.byTooltip('현재 위치'));
     await tester.pumpAndSettle();
     expect(repository.lastLatitude, 35.1796);
+    expect(find.text('현재 위치를 기준으로 검색했습니다.'), findsOneWidget);
   });
 
   testWidgets('searches places and reloads around selected result', (

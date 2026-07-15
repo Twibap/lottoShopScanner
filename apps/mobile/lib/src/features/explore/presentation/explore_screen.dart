@@ -92,11 +92,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Future<void> _moveToCurrentLocation() async {
     try {
       final coordinate = await widget.locationService.current();
-      _latitude = coordinate.latitude;
-      _longitude = coordinate.longitude;
-      _mapLatitude = coordinate.latitude;
-      _mapLongitude = coordinate.longitude;
-      _searchLabel = '현재 위치 주변';
+      setState(() {
+        _latitude = coordinate.latitude;
+        _longitude = coordinate.longitude;
+        _mapLatitude = coordinate.latitude;
+        _mapLongitude = coordinate.longitude;
+        _searchLabel = '현재 위치 주변';
+      });
       await _mapController?.updateCamera(
         NCameraUpdate.scrollAndZoomTo(
           target: NLatLng(coordinate.latitude, coordinate.longitude),
@@ -104,6 +106,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
       );
       await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('현재 위치를 기준으로 검색했습니다.')));
+      }
     } on LocationException catch (error) {
       if (mounted) await _showLocationFailure(error.failure);
     } on Exception {
@@ -117,15 +124,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Future<void> _showLocationFailure(LocationFailure failure) async {
     final serviceDisabled = failure == LocationFailure.serviceDisabled;
+    final denied = failure == LocationFailure.denied;
     final permanentlyDenied = failure == LocationFailure.deniedForever;
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(serviceDisabled ? '위치 서비스가 꺼져 있습니다' : '위치 권한이 필요합니다'),
+        title: Text(switch (failure) {
+          LocationFailure.serviceDisabled => '위치 서비스가 꺼져 있습니다',
+          LocationFailure.denied => '위치 권한이 허용되지 않았습니다',
+          LocationFailure.deniedForever => '위치 권한이 차단되어 있습니다',
+        }),
         content: Text(
           serviceDisabled
               ? '기기의 위치 서비스를 켜거나 지역을 직접 검색해 주세요.'
-              : '위치는 주변 판매점 검색에만 사용하며 서버에 저장하지 않습니다.',
+              : denied
+              ? '권한 요청에서 허용을 선택하면 현재 위치 주변 판매점을 찾을 수 있습니다.'
+              : '설정에서 위치 권한을 허용하거나 지역을 직접 검색해 주세요.',
         ),
         actions: [
           TextButton(
