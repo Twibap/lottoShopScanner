@@ -518,13 +518,27 @@ class _MapPanel extends StatelessWidget {
               onCameraIdle: onCameraIdle,
             )
           else
-            const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.map_outlined, size: 54, color: Color(0xFF6B8C73)),
-                SizedBox(height: 6),
-                Text('NAVER_MAP_CLIENT_ID를 설정하면 지도가 표시됩니다.'),
-              ],
+            const Positioned.fill(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.map_outlined,
+                        size: 54,
+                        color: Color(0xFF6B8C73),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'NAVER 지도 키를 설정하면 지도가 표시됩니다.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           Positioned(
             bottom: 12,
