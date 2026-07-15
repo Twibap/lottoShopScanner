@@ -4,6 +4,7 @@ import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../data/location_service.dart';
 import '../data/shop_repository.dart';
 import '../domain/shop.dart';
+import 'shop_detail_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({
@@ -11,11 +12,13 @@ class ExploreScreen extends StatefulWidget {
     required this.repository,
     required this.mapEnabled,
     required this.locationService,
+    this.supportEmail = '',
   });
 
   final ShopRepository repository;
   final bool mapEnabled;
   final LocationService locationService;
+  final String supportEmail;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -185,6 +188,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
     _mapLongitude = target.longitude;
   }
 
+  void _openShopDetail(Shop shop) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (context) => ShopDetailScreen(
+          repository: widget.repository,
+          shop: shop,
+          latitude: _latitude,
+          longitude: _longitude,
+          radiusM: _radiusM,
+          sort: _sort,
+          supportEmail: widget.supportEmail,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -275,7 +295,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
             );
           }
-          return _ShopCard(shop: _shops[index - 1]);
+          return _ShopCard(shop: _shops[index - 1], onTap: _openShopDetail);
         },
       ),
     );
@@ -556,9 +576,10 @@ class _Filters extends StatelessWidget {
 }
 
 class _ShopCard extends StatelessWidget {
-  const _ShopCard({required this.shop});
+  const _ShopCard({required this.shop, required this.onTap});
 
   final Shop shop;
+  final ValueChanged<Shop> onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -582,7 +603,7 @@ class _ShopCard extends StatelessWidget {
           ),
         ),
         trailing: Text(shop.distanceLabel),
-        onTap: () {},
+        onTap: () => onTap(shop),
       ),
     );
   }

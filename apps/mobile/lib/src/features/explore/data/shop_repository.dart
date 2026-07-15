@@ -41,6 +41,14 @@ abstract interface class ShopRepository {
   });
 
   Future<List<PlaceSearchResult>> searchPlaces({required String query});
+
+  Future<ShopDetail> detail({
+    required String shopId,
+    required double latitude,
+    required double longitude,
+    required int radiusM,
+    required ShopSort sort,
+  });
 }
 
 class ApiShopRepository implements ShopRepository {
@@ -109,6 +117,41 @@ class ApiShopRepository implements ShopRepository {
           .cast<Map<String, dynamic>>()
           .map(PlaceSearchResult.fromJson)
           .toList(growable: false);
+    } on SocketException {
+      throw const HttpException('서버에 연결할 수 없습니다.');
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  @override
+  Future<ShopDetail> detail({
+    required String shopId,
+    required double latitude,
+    required double longitude,
+    required int radiusM,
+    required ShopSort sort,
+  }) async {
+    final uri = Uri.parse('$baseUrl/v1/shops/$shopId').replace(
+      queryParameters: {
+        'lat': '$latitude',
+        'lng': '$longitude',
+        'radius_m': '$radiusM',
+        'sort': sort.apiValue,
+      },
+    );
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+    try {
+      final request = await client.getUrl(uri);
+      final response = await request.close();
+      final body = await utf8.decoder.bind(response).join();
+      if (response.statusCode == HttpStatus.notFound) {
+        throw const HttpException('판매점을 찾을 수 없습니다.');
+      }
+      if (response.statusCode != HttpStatus.ok) {
+        throw const HttpException('판매점 상세 정보를 불러오지 못했습니다.');
+      }
+      return ShopDetail.fromJson(jsonDecode(body) as Map<String, dynamic>);
     } on SocketException {
       throw const HttpException('서버에 연결할 수 없습니다.');
     } finally {

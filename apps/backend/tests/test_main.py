@@ -42,5 +42,28 @@ class PlaceSearchEndpointTests(unittest.TestCase):
         self.assertEqual(shop_search.call_args.kwargs["limit"], 1)
 
 
+class ShopDetailEndpointTests(unittest.TestCase):
+    def test_nearby_route_is_registered_before_dynamic_shop_detail(self) -> None:
+        paths = [getattr(route, "path", "") for route in main.app.routes]
+
+        self.assertLess(
+            paths.index("/v1/shops/nearby"),
+            paths.index("/v1/shops/{shop_id}"),
+        )
+
+    def test_rejects_partial_coordinate_context(self) -> None:
+        with self.assertRaises(main.HTTPException) as context:
+            main.shop_detail(shop_id="shop-1", lat=37.5, connection=object())
+
+        self.assertEqual(context.exception.status_code, 400)
+
+    def test_missing_shop_returns_404(self) -> None:
+        with patch.object(main, "fetch_shop_detail", return_value=None):
+            with self.assertRaises(main.HTTPException) as context:
+                main.shop_detail(shop_id="missing", connection=object())
+
+        self.assertEqual(context.exception.status_code, 404)
+
+
 if __name__ == "__main__":
     unittest.main()

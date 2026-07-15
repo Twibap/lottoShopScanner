@@ -36,6 +36,16 @@ If `NAVER_GEOCODE_CLIENT_ID` and `NAVER_GEOCODE_CLIENT_SECRET` are set, NAVER
 address geocoding results are returned before shop database matches. Without
 those variables, search falls back to shop name, address, and region matches.
 
+Shop detail is available at:
+
+```text
+GET /v1/shops/11100928?lat=37.5665&lng=126.9780&radius_m=3000&sort=distance
+```
+
+The optional coordinate context returns distance and the shop's current rank
+inside the selected radius and sort mode. The detail response also includes
+national helper ranks and individual first/second prize winning history.
+
 ## Test
 
 ```powershell

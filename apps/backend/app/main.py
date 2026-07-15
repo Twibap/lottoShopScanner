@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 
 from .cursor import decode_cursor, encode_cursor
 from .geocoding import GeocodingUnavailable, search_naver_addresses
-from .repository import fetch_nearby, search_places
+from .repository import fetch_nearby, fetch_shop_detail, search_places
 
 
 DATABASE_URL = os.environ.get(
@@ -73,3 +73,22 @@ def nearby_shops(
         "nextCursor": next_cursor,
         "search": {"lat": lat, "lng": lng, "radiusM": radius_m, "sort": sort},
     }
+
+
+@app.get("/v1/shops/{shop_id}")
+def shop_detail(
+    shop_id: str,
+    lat: Annotated[float | None, Query(ge=32, le=39)] = None,
+    lng: Annotated[float | None, Query(ge=124, le=132)] = None,
+    radius_m: Annotated[int, Query(ge=0, le=10_000)] = 3_000,
+    sort: Literal["distance", "first_wins", "second_wins", "total_prize", "recent_win"] = "distance",
+    connection: psycopg.Connection = Depends(database_connection),
+) -> dict[str, object]:
+    if (lat is None) != (lng is None):
+        raise HTTPException(status_code=400, detail="lat과 lng는 함께 전달해야 합니다.")
+    detail = fetch_shop_detail(
+        connection, shop_id=shop_id, lat=lat, lng=lng, radius_m=radius_m, sort=sort,
+    )
+    if detail is None:
+        raise HTTPException(status_code=404, detail="판매점을 찾을 수 없습니다.")
+    return detail

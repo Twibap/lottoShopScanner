@@ -7,7 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.repository import SORT_ORDERS, nearby_query, search_places_query  # noqa: E402
+from app.repository import (  # noqa: E402
+    SORT_ORDERS,
+    current_rank_query,
+    nearby_query,
+    search_places_query,
+)
 
 
 class NearbyQueryTests(unittest.TestCase):
@@ -35,3 +40,11 @@ class NearbyQueryTests(unittest.TestCase):
         self.assertIn("s.address ILIKE", query)
         self.assertIn("s.region ILIKE", query)
         self.assertIn("LIMIT %(limit)s", query)
+
+    def test_current_rank_query_reuses_product_sort_modes(self) -> None:
+        query = current_rank_query("total_prize")
+
+        self.assertIn("row_number() OVER", query)
+        self.assertIn("total_prize DESC", query)
+        self.assertIn("ST_DWithin", query)
+        self.assertIn("WHERE shop_id = %(shop_id)s", query)
