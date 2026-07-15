@@ -5,7 +5,7 @@
 ## 현재 상태
 
 - 기본 브랜치: `master`
-- 인수인계 작성 직전 커밋: `4ac4c55 fix: improve current location handling`
+- 인수인계 작성 직전 커밋: `00bbb4f chore: lock iOS map package versions`
 - 원격 저장소: `https://github.com/Twibap/lottoShopScanner.git`
 - 모노레포 구성
   - `apps/data-collector`: 동행복권 공개 데이터 수집, 랭킹 생성, PostgreSQL 적재
@@ -112,6 +112,43 @@ flutter analyze
 flutter test
 ```
 
+## 테스트 사용자 앱 전달 준비
+
+실기기 테스트 사용자에게 앱을 전달하기 전에 다음 작업을 순서대로 진행한다.
+
+1. 배포용 환경값 확정
+   - `NAVER_MAP_CLIENT_ID`: NAVER Cloud Maps의 Dynamic Map Client ID를 사용한다.
+   - `API_BASE_URL`: 테스트 사용자가 외부 네트워크에서 접근할 수 있는 백엔드 주소로 설정한다.
+   - `SUPPORT_EMAIL`: 정보 오류 제보를 받을 실제 이메일 주소로 설정한다.
+   - 앱 빌드에 `localhost`, `127.0.0.1`, `10.0.2.2` 같은 개발용 주소가 남아있지 않은지 확인한다.
+2. 테스트 백엔드 공개
+   - 백엔드를 외부 접근 가능한 서버에 배포한다.
+   - 가능하면 HTTPS를 사용한다. 모바일 네트워크, 사내 Wi-Fi, 일반 가정 Wi-Fi에서 접근을 확인한다.
+   - 테스트 서버 기준으로 검색, 판매점 상세, 현재 위치, 길찾기 진입을 확인한다.
+3. Android 테스트 앱 준비
+   - 릴리즈 서명 키를 준비한다.
+   - 테스트용 `apk` 또는 Play Console 내부 테스트용 `aab`를 생성한다.
+   - 소수 테스터에게는 APK 직접 전달이 빠르다. 더 넓은 테스트에는 Google Play 내부 테스트 트랙을 사용한다.
+4. iOS 테스트 앱 준비
+   - Apple Developer 계정, Bundle ID, Signing, Provisioning Profile을 정리한다.
+   - App Store Connect에 앱을 등록한다.
+   - TestFlight 빌드를 업로드하고 테스트 사용자 이메일을 초대한다.
+5. 기능 최종 점검
+   - 위치 권한 요청과 거부 상태
+   - 현재 위치 반영
+   - NAVER 지도 표시
+   - 검색 결과와 빈 결과
+   - 판매점 상세 화면
+   - 길찾기 버튼이 Android에서는 지도 앱, iOS에서는 Apple Maps로 이어지는 흐름
+   - 정보 오류 제보 이메일 연결
+6. 테스터 안내문 작성
+   - 설치 방법
+   - 테스트할 주요 기능
+   - 알려진 제한사항
+   - 오류 제보 시 필요한 정보: 기기명, OS 버전, 앱 화면 캡처, 발생 시점, 검색어 또는 판매점명
+
+현재 기준으로 Android는 APK 직접 전달 또는 Play Console 내부 테스트를 선택하면 된다. iOS는 TestFlight 준비가 필수 단계다. 두 플랫폼 모두 테스트 사용자에게 전달하기 전에 외부 접속 가능한 백엔드 주소와 배포용 `dart-define` 값을 먼저 확정해야 한다.
+
 ## 다음 작업
 
 우선순위는 다음과 같다.
@@ -139,3 +176,6 @@ flutter test
 - `b30e140`: 장소명 검색 보류 기록
 - `75afa9b`: 판매점 상세 API와 상세 화면
 - `4ac4c55`: 현재 위치 조회 안정화
+- `6edcee2`: 지원 이메일 설정 문서화
+- `b99e9ef`: 지도 비활성 안내 문구 레이아웃 보완
+- `00bbb4f`: iOS 지도 패키지 버전 고정
