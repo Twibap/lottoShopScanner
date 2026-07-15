@@ -31,6 +31,15 @@ C:\Users\Twibap\flutter\bin\flutter.bat run `
   --dart-define=API_BASE_URL=http://192.168.0.10:8000
 ```
 
+Connect the in-app incorrect-info report button by passing a support mailbox:
+
+```powershell
+C:\Users\Twibap\flutter\bin\flutter.bat run `
+  --dart-define=NAVER_MAP_CLIENT_ID=your-client-id `
+  --dart-define=API_BASE_URL=http://192.168.0.10:8000 `
+  --dart-define=SUPPORT_EMAIL=support@example.com
+```
+
 Local cleartext HTTP is enabled only in the Android debug manifest. Production
 builds must use HTTPS.
 

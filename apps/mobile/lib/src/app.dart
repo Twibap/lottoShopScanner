@@ -10,11 +10,13 @@ class LottoShopScannerApp extends StatelessWidget {
     this.repository,
     this.mapEnabled = false,
     this.locationService,
+    this.supportEmail = '',
   });
 
   final ShopRepository? repository;
   final bool mapEnabled;
   final LocationService? locationService;
+  final String supportEmail;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +35,7 @@ class LottoShopScannerApp extends StatelessWidget {
         repository: repository ?? ApiShopRepository(),
         mapEnabled: mapEnabled,
         locationService: locationService ?? GeolocatorLocationService(),
+        supportEmail: supportEmail,
       ),
     );
   }

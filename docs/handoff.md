@@ -5,7 +5,7 @@
 ## 현재 상태
 
 - 기본 브랜치: `master`
-- 인수인계 작성 직전 커밋: `127c632 feat: integrate Naver map and device location`
+- 인수인계 작성 직전 커밋: `4ac4c55 fix: improve current location handling`
 - 원격 저장소: `https://github.com/Twibap/lottoShopScanner.git`
 - 모노레포 구성
   - `apps/data-collector`: 동행복권 공개 데이터 수집, 랭킹 생성, PostgreSQL 적재
@@ -22,6 +22,10 @@
 5. 반경 내 판매점 조회 API와 커서 페이지네이션
 6. Flutter 탐색 화면, API 연동, 반경·랭킹 필터와 로딩·빈 결과·오류 상태
 7. NAVER 지도 표시, 마커, 현재 위치 권한 및 위치 조회
+8. 지역·주소·판매점 검색, 검색 중심점 이동, NAVER 주소 지오코딩 fallback
+9. 판매점 상세 API와 Flutter 상세 화면, 당첨 통계·개별 이력·전국 보조 순위 표시
+10. 상세 화면의 외부 지도 앱 길찾기 연결
+11. 상세 화면의 정보 오류 제보 이메일 연결
 
 ## 확정된 제품 결정
 
@@ -87,7 +91,8 @@ cd apps/mobile
 flutter pub get
 flutter run \
   --dart-define=NAVER_MAP_CLIENT_ID=your-client-id \
-  --dart-define=API_BASE_URL=http://127.0.0.1:8000
+  --dart-define=API_BASE_URL=http://127.0.0.1:8000 \
+  --dart-define=SUPPORT_EMAIL=support@example.com
 ```
 
 iOS 시뮬레이터에서는 일반적으로 `127.0.0.1`로 Mac의 백엔드에 접근할 수 있다. Android 에뮬레이터의 기본 URL은 `http://10.0.2.2:8000`이다. 실제 기기는 Mac과 같은 네트워크에서 Mac의 LAN IP를 사용한다. 비밀값과 로컬 생성 데이터는 Git에 커밋하지 않는다.
@@ -111,19 +116,16 @@ flutter test
 
 우선순위는 다음과 같다.
 
-1. 판매점 상세 API 및 Flutter 상세 화면 구현
-2. 상세 화면에 통계, 개별 당첨 이력, 현재 반경 순위와 전국 보조 순위 표시
-3. 외부 지도 앱 길찾기 연결
-4. NAVER 장소명 검색 연동 검토
+1. NAVER 장소명 검색 연동 검토
    - 현재 검색은 NAVER 주소 지오코딩과 판매점 DB의 상호명·주소·지역 검색을 지원한다.
    - `서울시청`, `강남역`, `부산역` 같은 장소명 검색은 주소 지오코딩만으로는 결과가 없을 수 있어 별도 장소/키워드 검색 API 검토가 필요하다.
-5. 오류 신고 이메일 연결과 실제 지원 주소 확정
-6. 정기 갱신 스케줄러 및 성공 시 잔여 재시도 중단 로직 구현·운영 검증
-7. 네트워크 단절, 위치 권한 거부, 빈 결과, 부분 통계 누락 상태 보완
-8. Android/iOS 실기기 검증, 접근성·성능 점검, HTTPS 배포 환경 구성
-9. 개인정보처리방침과 출처·비공식 서비스 고지 작성 후 스토어 출시 준비
+2. 실제 지원 이메일 주소 확정
+3. 정기 갱신 스케줄러 및 성공 시 잔여 재시도 중단 로직 구현·운영 검증
+4. 네트워크 단절, 위치 권한 거부, 빈 결과, 부분 통계 누락 상태 보완
+5. Android/iOS 실기기 검증, 접근성·성능 점검, HTTPS 배포 환경 구성
+6. 개인정보처리방침과 출처·비공식 서비스 고지 작성 후 스토어 출시 준비
 
-다음 개발 단계는 판매점 상세 API와 Flutter 상세 화면 구현이다.
+다음 개발 단계는 NAVER 장소명 검색 연동 검토 또는 실제 지원 이메일 주소 확정이다.
 
 ## 주요 커밋
 
@@ -133,3 +135,7 @@ flutter test
 - `7b9e1d2`: 주변 판매점 검색 API
 - `9d2e66b`: Flutter 탐색 앱 기본 골격
 - `127c632`: NAVER 지도와 기기 위치 연동
+- `b858475`: 지역·주소 검색 API와 Flutter 검색 UI
+- `b30e140`: 장소명 검색 보류 기록
+- `75afa9b`: 판매점 상세 API와 상세 화면
+- `4ac4c55`: 현재 위치 조회 안정화
