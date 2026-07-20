@@ -33,7 +33,7 @@ jobs:
       - name: Run backend unit tests
         run: python -m unittest discover -s apps/backend/tests -v
       - name: Validate Mac deployment script
-        run: bash -n scripts/deploy-backend-mac.sh
+        run: bash -n scripts/deploy-backend-mac.sh scripts/test-backend.sh
 
   container:
     runs-on: ubuntu-latest

@@ -65,6 +65,23 @@ a future Flutter version may turn this warning into a build failure.
 
 ## Verify
 
+저장소 루트에서 포맷, 정적 분석, 단위·위젯 테스트와 Android 디버그 빌드를 한 번에
+검사합니다.
+
+```bash
+./scripts/test-frontend.sh
+```
+
+빠른 검사에서 APK 빌드를 생략하려면 `--skip-build`를 사용합니다. 실제 기기의 지도 통합
+테스트까지 실행하려면 Client ID와 기기를 지정합니다.
+
+```bash
+NAVER_MAP_CLIENT_ID=<client-id> \
+  ./scripts/test-frontend.sh --device <device-id>
+```
+
+개별 명령은 다음과 같습니다.
+
 ```powershell
 C:\Users\Twibap\flutter\bin\flutter.bat analyze
 C:\Users\Twibap\flutter\bin\flutter.bat test

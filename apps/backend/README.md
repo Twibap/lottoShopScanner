@@ -59,3 +59,10 @@ national helper ranks and individual first/second prize winning history.
 ```powershell
 python -m unittest discover -s apps/backend/tests -v
 ```
+
+Docker를 사용해 단위 테스트, Compose, 이미지 설정, Caddy 구성과 실제 컨테이너
+liveness를 모두 검사하려면 저장소 루트에서 실행합니다.
+
+```bash
+./scripts/test-backend.sh
+```
