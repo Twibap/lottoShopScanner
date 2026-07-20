@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -40,6 +40,32 @@ class PlaceSearchEndpointTests(unittest.TestCase):
         naver.assert_called_once_with("서울시청", limit=2)
         shop_search.assert_called_once()
         self.assertEqual(shop_search.call_args.kwargs["limit"], 1)
+
+
+class HealthEndpointTests(unittest.TestCase):
+    def test_readiness_is_ok_when_database_responds(self) -> None:
+        response = main.Response()
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+
+        with patch.object(main.psycopg, "connect", return_value=connection) as connect:
+            body = main.readiness(response)
+
+        self.assertEqual(body, {"status": "ok"})
+        self.assertEqual(response.status_code, 200)
+        connect.assert_called_once_with(main.DATABASE_URL, connect_timeout=3)
+        connection.execute.assert_called_once_with("SELECT 1")
+
+    def test_readiness_is_unavailable_when_database_fails(self) -> None:
+        response = main.Response()
+
+        with patch.object(
+            main.psycopg, "connect", side_effect=main.psycopg.OperationalError("down")
+        ):
+            body = main.readiness(response)
+
+        self.assertEqual(body, {"status": "unavailable"})
+        self.assertEqual(response.status_code, 503)
 
 
 class ShopDetailEndpointTests(unittest.TestCase):

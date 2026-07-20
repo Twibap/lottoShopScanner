@@ -51,6 +51,7 @@ services:
     image: lotto-shop-scanner/backend:local
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-lotto}:${POSTGRES_PASSWORD:-lotto-local-password}@postgres:5432/${POSTGRES_DB:-lotto}
+      PORT: 8000
       NAVER_GEOCODE_CLIENT_ID: ${NAVER_GEOCODE_CLIENT_ID:-}
       NAVER_GEOCODE_CLIENT_SECRET: ${NAVER_GEOCODE_CLIENT_SECRET:-}
     ports:
@@ -58,6 +59,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
 volumes:
   postgres-data:

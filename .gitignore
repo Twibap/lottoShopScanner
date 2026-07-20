@@ -160,6 +160,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.server.mac
 .venv
 env/
 venv/

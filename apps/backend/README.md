@@ -18,6 +18,9 @@ docker compose exec -T postgres psql -U lotto -d lotto `
 
 OpenAPI documentation is available at `http://localhost:8000/docs`.
 
+Container deployment, health probes, environment variables, and rollback steps
+are documented in [`../../docs/backend-deployment.md`](../../docs/backend-deployment.md).
+
 For a test server, set `DATABASE_URL`, `NAVER_GEOCODE_CLIENT_ID`, and
 `NAVER_GEOCODE_CLIENT_SECRET` in the server environment. Local defaults in
 `compose.yaml` are for development only; external tester builds should call an

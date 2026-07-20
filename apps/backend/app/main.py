@@ -5,7 +5,7 @@ from collections.abc import Generator
 from typing import Annotated, Literal
 
 import psycopg
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 
 from .cursor import decode_cursor, encode_cursor
 from .geocoding import GeocodingUnavailable, search_naver_addresses
@@ -20,12 +20,28 @@ app = FastAPI(title="Lotto Shop Scanner API", version="0.1.0")
 
 
 def database_connection() -> Generator[psycopg.Connection, None, None]:
-    with psycopg.connect(DATABASE_URL) as connection:
+    with psycopg.connect(DATABASE_URL, connect_timeout=5) as connection:
         yield connection
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/health/live", include_in_schema=False)
+def liveness() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/health/ready", include_in_schema=False)
+def readiness(response: Response) -> dict[str, str]:
+    try:
+        with psycopg.connect(DATABASE_URL, connect_timeout=3) as connection:
+            connection.execute("SELECT 1")
+    except psycopg.Error:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "unavailable"}
     return {"status": "ok"}
 
 
