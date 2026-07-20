@@ -41,6 +41,21 @@ docker compose build data-collector
 docker compose config --quiet
 ```
 
+Android 앱을 실행하지 않고 배포된 백엔드의 상태와 앱용 API 계약을 확인하려면
+루트 `.env`에 외부 URL을 설정합니다.
+
+```dotenv
+API_BASE_URL=https://api.example.com
+```
+
+이후 인자 없이 실행합니다.
+
+```bash
+./scripts/test-external-api.sh
+```
+
+좌표와 검색어는 `LAT`, `LNG`, `RADIUS_M`, `SEARCH_QUERY` 환경변수로 바꿀 수 있습니다.
+
 ## 테스트 사용자 전달
 
 실기기 테스트 사용자에게 앱을 전달하기 위한 배포용 환경값, 테스트 백엔드 준비,

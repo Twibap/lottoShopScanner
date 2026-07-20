@@ -56,6 +56,24 @@ flutter run \
 4. HTTPS 도메인을 연결한다.
 5. 앱 빌드의 `API_BASE_URL`을 HTTPS 주소로 설정한다.
 
+Android 앱 밖에서 외부 접속과 주요 응답 형식을 한 번에 점검할 수 있다.
+저장소 루트 `.env`의 앱 빌드용 `API_BASE_URL`을 그대로 사용한다.
+
+```dotenv
+API_BASE_URL=https://api.example.com
+```
+
+```bash
+./scripts/test-external-api.sh
+```
+
+기본값은 서울시청 좌표와 `서울 중구` 검색어다. 다른 지역은 다음처럼 지정한다.
+
+```bash
+LAT=35.1796 LNG=129.0756 SEARCH_QUERY="부산 중구" \
+  ./scripts/test-external-api.sh
+```
+
 ## Android 전달
 
 소수 테스터에게 빠르게 전달할 때는 APK를 만들 수 있다.
