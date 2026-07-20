@@ -46,6 +46,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   var _mapLoaded = false;
   UserCoordinate? _currentLocation;
   Offset? _fabPosition;
+  Future<void> _markerSync = Future<void>.value();
+  var _markersOnMap = false;
 
   @override
   void initState() {
@@ -110,23 +112,45 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _syncMarkers() async {
+    _markerSync = _markerSync.then((_) => _syncMarkersNow()).catchError((
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      debugPrint('판매점 마커 동기화 실패: $error');
+    });
+    await _markerSync;
+  }
+
+  Future<void> _syncMarkersNow() async {
     final controller = _mapController;
     if (controller == null || !_mapLoaded) return;
-    await controller.clearOverlays(type: NOverlayType.marker);
-    await controller.clearOverlays(type: NOverlayType.clusterableMarker);
-    final markers = _shops.map((shop) {
-      final marker = NClusterableMarker(
-        id: shop.id,
-        position: NLatLng(shop.latitude, shop.longitude),
-        caption: NOverlayCaption(text: '${shop.resultRank}위 ${shop.name}'),
-        iconTintColor: const Color(0xFF176B3A),
-      );
-      marker.setOnTapListener((_) {
-        if (mounted) _openShopDetail(shop);
+    if (_markersOnMap) {
+      await controller.clearOverlays(type: NOverlayType.clusterableMarker);
+      _markersOnMap = false;
+    }
+    if (_shops.isEmpty) {
+      widget.onMarkersSynced?.call();
+      return;
+    }
+    final shopsById = {for (final shop in _shops) shop.id: shop};
+    final markers = shopsById.values
+        .map(
+          (shop) => NClusterableMarker(
+            id: shop.id,
+            position: NLatLng(shop.latitude, shop.longitude),
+            caption: NOverlayCaption(text: '${shop.resultRank}위 ${shop.name}'),
+            iconTintColor: const Color(0xFF176B3A),
+          ),
+        )
+        .toSet();
+    for (final marker in markers) {
+      marker.setOnTapListener((overlay) {
+        final shop = shopsById[overlay.info.id];
+        if (mounted && shop != null) _openShopDetail(shop);
       });
-      return marker;
-    }).toSet();
+    }
     await controller.addOverlayAll(markers);
+    _markersOnMap = true;
     widget.onMarkersSynced?.call();
   }
 
