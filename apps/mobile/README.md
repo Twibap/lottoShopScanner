@@ -31,6 +31,12 @@ C:\Users\Twibap\flutter\bin\flutter.bat run `
   --dart-define=API_BASE_URL=http://192.168.0.10:8000
 ```
 
+`scripts/run-mobile-device.sh` reads `API_BASE_URL` from the root `.env`. When
+that value is set, it uses the external backend without starting a local Compose
+stack. Set `START_BACKEND=1` explicitly only when a separate local development
+backend is needed; that stack uses the `lotto-shop-scanner-dev` Compose project
+name so it cannot replace the Mac server containers.
+
 Connect the in-app incorrect-info report button by passing a support mailbox:
 
 ```powershell

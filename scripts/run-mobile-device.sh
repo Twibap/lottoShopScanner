@@ -21,8 +21,16 @@ fi
 
 cd "$ROOT_DIR"
 
-if [[ "${START_BACKEND:-1}" == "1" ]]; then
-  docker compose up -d postgres backend
+if [[ -z "${START_BACKEND+x}" ]]; then
+  if [[ -n "${API_BASE_URL:-}" ]]; then
+    START_BACKEND=0
+  else
+    START_BACKEND=1
+  fi
+fi
+
+if [[ "$START_BACKEND" == "1" ]]; then
+  docker compose --project-name lotto-shop-scanner-dev up -d postgres backend
 fi
 
 if [[ -z "${DEVICE_ID:-}" ]]; then
