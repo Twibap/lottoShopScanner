@@ -8,6 +8,10 @@ const backend = process.env.API_PROXY_TARGET || 'http://localhost:8000';
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8' };
 
 http.createServer(async (request, response) => {
+  if (request.url === '/') {
+    response.writeHead(308, { location: '/lottoshoprank/' }).end();
+    return;
+  }
   if (request.url.startsWith('/api/')) {
     try {
       const target = new URL(request.url.slice(4), backend);
@@ -21,7 +25,12 @@ http.createServer(async (request, response) => {
     return;
   }
   const pathname = new URL(request.url, 'http://localhost').pathname;
-  const relative = pathname === '/' ? 'index.html' : normalize(pathname).replace(/^[/\\]+/, '');
+  if (pathname === '/lottoshoprank') {
+    response.writeHead(308, { location: '/lottoshoprank/' }).end();
+    return;
+  }
+  const appPath = pathname.startsWith('/lottoshoprank/') ? pathname.slice('/lottoshoprank'.length) : pathname;
+  const relative = appPath === '/' ? 'index.html' : normalize(appPath).replace(/^[/\\]+/, '');
   try {
     const body = await readFile(join(root, relative));
     response.writeHead(200, { 'content-type': types[extname(relative)] || 'application/octet-stream' });

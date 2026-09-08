@@ -21,7 +21,7 @@ lottoShopScanner/
 
 ## 웹 서비스 실행
 
-백엔드와 웹을 함께 실행한 뒤 `http://localhost:3000`을 엽니다.
+백엔드와 웹을 함께 실행한 뒤 `http://localhost:3000/lottoshoprank/`을 엽니다.
 
 ```powershell
 docker compose up --build postgres backend frontend

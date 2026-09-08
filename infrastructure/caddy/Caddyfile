@@ -1,5 +1,11 @@
 {$API_DOMAIN} {
 	encode zstd gzip
+	redir / /lottoshoprank/ 308
+	redir /lottoshoprank /lottoshoprank/ 308
+
+	handle_path /lottoshoprank/* {
+		reverse_proxy frontend:80
+	}
 
 	# 웹은 같은 출처의 /api를 사용하고, 기존 공개 API 경로는 유지한다.
 	handle_path /api/* {
@@ -18,7 +24,7 @@
 		reverse_proxy backend:8000
 	}
 	handle {
-		reverse_proxy frontend:80
+		reverse_proxy backend:8000
 	}
 
 	header {

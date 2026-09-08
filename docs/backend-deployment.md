@@ -149,14 +149,15 @@ docker compose --env-file .env.server.mac -f compose.mac-server.yaml down
 ## 배포 확인
 
 ```bash
-curl --fail https://API_HOST/
+curl --fail https://API_HOST/lottoshoprank/
 curl --fail https://API_HOST/health/live
 curl --fail https://API_HOST/health/ready
 curl --fail "https://API_HOST/v1/shops/nearby?lat=37.5665&lng=126.9780&radius_m=3000&limit=1"
 ```
 
 배포 직후 5xx 비율, 응답 시간, 컨테이너 재시작 횟수, DB 연결 수를 확인한다. 같은 주소의
-`/`에는 반응형 웹이 제공되고 웹은 `/api/*`로 백엔드를 호출한다. 기존 모바일 앱이 사용하는
+`/lottoshoprank/`에는 반응형 웹이 제공되고 웹은 `/api/*`로 백엔드를 호출한다. 도메인 루트는
+서비스 경로로 자동 이동한다. 기존 모바일 앱이 사용하는
 `/v1/*`, `/health/*` 계약은 유지되며 `API_BASE_URL`도 위 HTTPS 주소를 그대로 사용한다.
 
 ## 롤백

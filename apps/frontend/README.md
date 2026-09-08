@@ -22,7 +22,7 @@
 docker compose up --build postgres backend frontend
 ```
 
-웹 주소는 `http://localhost:3000`, 기존 API 문서는 `http://localhost:8000/docs`입니다.
+웹 주소는 `http://localhost:3000/lottoshoprank/`, 기존 API 문서는 `http://localhost:8000/docs`입니다.
 
 로컬 Node.js 개발 서버는 3000번 포트에서 `/api`를 `http://localhost:8000`으로
 프록시합니다.
