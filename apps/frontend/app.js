@@ -1,5 +1,5 @@
-import { SORTS, distanceLabel, escapeHtml, nearbyUrl, won } from './lib.js';
-import { SlippyMap } from './map.js';
+import { SORTS, distanceLabel, escapeHtml, nearbyUrl, won } from './lib.js?v=mobile-map-v2';
+import { SlippyMap } from './map.js?v=mobile-map-v2';
 
 const DEFAULT = { lat: 37.5665, lng: 126.9780, radius: 3000, sort: 'distance', label: '서울시청 주변' };
 const params = new URLSearchParams(location.search);
