@@ -102,6 +102,13 @@ $('#my-location').onclick = useLocation;
 $('#radius').onchange = event => { state.radius = Number(event.target.value); loadShops(); };
 $('#sorts').onclick = event => { const button = event.target.closest('[data-sort]'); if (!button) return; state.sort = button.dataset.sort; syncControls(); loadShops(); };
 $('#search-center').onclick = () => { if (!state.mapCenter) return toast('지도를 먼저 움직여 주세요.'); state.lat = state.mapCenter.lat; state.lng = state.mapCenter.lng; state.label = '지도 중심 주변'; syncControls(); loadShops(); };
+$('#results-handle').onclick = () => {
+  const panel = document.querySelector('.results-panel');
+  const collapsed = panel.classList.toggle('collapsed');
+  document.body.classList.toggle('results-collapsed', collapsed);
+  $('#results-handle').setAttribute('aria-expanded', String(!collapsed));
+  $('#results-handle').setAttribute('aria-label', collapsed ? '판매점 목록 펼치기' : '판매점 목록 접기');
+};
 $('#open-info').onclick = () => $('#info-dialog').showModal();
 document.querySelectorAll('.dialog-close').forEach(button => button.onclick = () => button.closest('dialog').close());
 document.querySelectorAll('dialog').forEach(dialog => dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); }));

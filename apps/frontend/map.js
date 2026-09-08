@@ -52,12 +52,21 @@ export class SlippyMap {
   }
   renderMarkers() {
     const width = this.el.clientWidth, height = this.el.clientHeight, center = project(this.center.lat, this.center.lng, this.zoom);
-    const fragment = document.createDocumentFragment(); this.markers.replaceChildren();
+    const fragment = document.createDocumentFragment(), cells = new Map(); this.markers.replaceChildren();
     for (const shop of this.shops) {
       const point = project(shop.latitude, shop.longitude, this.zoom), left = point.x - center.x + width / 2, top = point.y - center.y + height / 2;
       if (left < -40 || left > width + 40 || top < -40 || top > height + 40) continue;
-      const button = document.createElement('button'); button.className = 'marker'; button.style.left = `${left}px`; button.style.top = `${top}px`;
-      button.textContent = shop.result_rank; button.title = `${shop.result_rank}위 ${shop.name}`; button.onclick = () => this.onSelect?.(shop); fragment.append(button);
+      const cellKey = this.zoom < 16 ? `${Math.round(left / 48)}:${Math.round(top / 48)}` : shop.shop_id;
+      const cell = cells.get(cellKey) || { left, top, shops: [] }; cell.shops.push(shop); cells.set(cellKey, cell);
+    }
+    for (const cell of cells.values()) {
+      const shop = cell.shops[0], clustered = cell.shops.length > 1;
+      const button = document.createElement('button'); button.className = 'marker';
+      button.style.left = `${cell.left}px`; button.style.top = `${cell.top}px`;
+      if (clustered) button.classList.add('marker-cluster');
+      button.textContent = clustered ? cell.shops.length : shop.result_rank;
+      button.title = clustered ? `판매점 ${cell.shops.length}곳` : `${shop.result_rank}위 ${shop.name}`;
+      button.onclick = () => clustered ? this.setView(shop.latitude, shop.longitude, this.zoom + 1) : this.onSelect?.(shop); fragment.append(button);
     }
     this.markers.append(fragment);
   }
