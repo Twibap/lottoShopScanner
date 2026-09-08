@@ -52,9 +52,9 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f infrastructure/postgres/init.sql
 
 ## 개발 Mac을 임시 서버로 사용
 
-`compose.mac-server.yaml`은 백엔드, PostGIS, Caddy HTTPS 프록시를 함께 실행한다.
-PostgreSQL 5432는 Docker 네트워크 안에만 있고 Caddy가 공개 80/443 요청을 백엔드로
-전달한다. 백엔드 8000 포트는 Mac의 localhost에만 열어 로컬 진단에 사용한다.
+`compose.mac-server.yaml`은 웹 프런트엔드, 백엔드, PostGIS, Caddy HTTPS 프록시를 함께 실행한다.
+PostgreSQL 5432는 Docker 네트워크 안에만 있고 Caddy가 공개 80/443 요청을 웹 또는
+백엔드로 전달한다. 백엔드 8000 포트는 Mac의 localhost에만 열어 로컬 진단에 사용한다.
 
 ### 1. 공유기와 Mac 준비
 
@@ -110,7 +110,7 @@ Caddy 자동 HTTPS에 사용할 수 없다. 테스트에는 소유한 도메인�
 docker compose --env-file .env.server.mac -f compose.mac-server.yaml config --quiet
 docker compose --env-file .env.server.mac -f compose.mac-server.yaml up -d --build
 docker compose --env-file .env.server.mac -f compose.mac-server.yaml ps
-docker compose --env-file .env.server.mac -f compose.mac-server.yaml logs -f backend caddy
+docker compose --env-file .env.server.mac -f compose.mac-server.yaml logs -f frontend backend caddy
 ```
 
 Mac의 LAN IP를 확인하고 같은 Wi-Fi의 테스트 기기에서 상태를 확인한다.
@@ -149,13 +149,15 @@ docker compose --env-file .env.server.mac -f compose.mac-server.yaml down
 ## 배포 확인
 
 ```bash
+curl --fail https://API_HOST/
 curl --fail https://API_HOST/health/live
 curl --fail https://API_HOST/health/ready
 curl --fail "https://API_HOST/v1/shops/nearby?lat=37.5665&lng=126.9780&radius_m=3000&limit=1"
 ```
 
-배포 직후 5xx 비율, 응답 시간, 컨테이너 재시작 횟수, DB 연결 수를 확인한다. 모바일 앱의
-`API_BASE_URL`은 위 HTTPS 주소로 빌드해야 한다.
+배포 직후 5xx 비율, 응답 시간, 컨테이너 재시작 횟수, DB 연결 수를 확인한다. 같은 주소의
+`/`에는 반응형 웹이 제공되고 웹은 `/api/*`로 백엔드를 호출한다. 기존 모바일 앱이 사용하는
+`/v1/*`, `/health/*` 계약은 유지되며 `API_BASE_URL`도 위 HTTPS 주소를 그대로 사용한다.
 
 ## 롤백
 

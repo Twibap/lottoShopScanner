@@ -41,6 +41,21 @@ services:
       retries: 5
       start_period: 10s
 
+  frontend:
+    build:
+      context: ./apps/frontend
+    image: lotto-shop-scanner/frontend:mac-server
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
@@ -56,6 +71,8 @@ services:
       - caddy-config:/config
     depends_on:
       backend:
+        condition: service_healthy
+      frontend:
         condition: service_healthy
 
   db-loader:

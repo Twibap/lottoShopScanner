@@ -92,20 +92,20 @@ if docker image inspect "$IMAGE" >/dev/null 2>&1; then
   HAD_PREVIOUS_IMAGE=1
 fi
 
-echo "[2/6] 백엔드 이미지 빌드"
-"${COMPOSE[@]}" build backend
+echo "[2/6] 백엔드와 웹 이미지 빌드"
+"${COMPOSE[@]}" build backend frontend
 
 echo "[3/6] PostgreSQL 시작"
 "${COMPOSE[@]}" up -d --wait postgres
 
-echo "[4/6] DB 비밀번호 동기화 및 백엔드/HTTPS 프록시 시작"
+echo "[4/6] DB 비밀번호 동기화 및 백엔드/웹/HTTPS 프록시 시작"
 printf "%s\n" \
   "SELECT format('ALTER ROLE %I PASSWORD %L', current_user, :'new_password') \\gexec" \
   | "${COMPOSE[@]}" exec -T \
       -e "NEW_POSTGRES_PASSWORD=$POSTGRES_PASSWORD" \
       postgres sh -c \
       'psql --set=ON_ERROR_STOP=1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --set="new_password=$NEW_POSTGRES_PASSWORD"'
-"${COMPOSE[@]}" up -d backend caddy
+"${COMPOSE[@]}" up -d backend frontend caddy
 
 PORT="${BACKEND_PORT:-8000}"
 HEALTH_URL="http://127.0.0.1:$PORT/health/ready"
@@ -158,7 +158,7 @@ fi
 
 MAC_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
 echo "배포 완료: $HEALTH_URL"
-echo "외부 HTTPS 주소: https://$API_DOMAIN"
+echo "외부 HTTPS 웹 주소: https://$API_DOMAIN"
 if [[ -n "$MAC_IP" ]]; then
   echo "Mac LAN IP: $MAC_IP (백엔드 8000 포트는 localhost에서만 접근 가능)"
 fi

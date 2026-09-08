@@ -7,6 +7,9 @@
 ```text
 lottoShopScanner/
 ├─ apps/
+│  ├─ frontend/             # 반응형 웹 서비스
+│  ├─ backend/              # FastAPI 조회 API
+│  ├─ mobile/               # 기존 Flutter 앱
 │  └─ data-collector/       # 동행복권 당첨 판매점 데이터 수집기
 ├─ packages/                # 여러 앱이 공유할 코드(추가 예정)
 ├─ infrastructure/          # 배포·프록시·IaC 설정(추가 예정)
@@ -14,7 +17,23 @@ lottoShopScanner/
 └─ compose.yaml             # 로컬 컨테이너 실행
 ```
 
-새 프론트엔드와 백엔드는 각각 `apps/frontend`, `apps/backend` 아래에 추가합니다. 여러 앱이 함께 사용하는 타입이나 유틸리티는 `packages/`에 둡니다.
+웹 프론트엔드와 백엔드는 각각 `apps/frontend`, `apps/backend` 아래에 있습니다. 여러 앱이 함께 사용하는 타입이나 유틸리티는 `packages/`에 둡니다.
+
+## 웹 서비스 실행
+
+백엔드와 웹을 함께 실행한 뒤 `http://localhost:3000`을 엽니다.
+
+```powershell
+docker compose up --build postgres backend frontend
+```
+
+웹 컨테이너가 `/api` 요청을 기존 백엔드로 프록시하므로 CORS 설정이나 백엔드 코드 변경은
+필요하지 않습니다. 프런트엔드만 빠르게 개발할 때는 백엔드를 먼저 실행하고 다음 명령을
+사용합니다.
+
+```powershell
+node .\apps\frontend\dev-server.js
+```
 
 ## 데이터 수집기 실행
 

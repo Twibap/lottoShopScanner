@@ -1,0 +1,10 @@
+{
+  "name": "lotto-shop-scanner-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "test": "node --test",
+    "check": "node --check app.js && node --check map.js && node --check lib.js && node --test"
+  }
+}

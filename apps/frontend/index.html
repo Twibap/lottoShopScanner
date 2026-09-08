@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#163728">
+  <meta name="description" content="내 주변 로또 명당과 실제 당첨 이력을 찾아보세요.">
+  <title>로또스팟 — 복권판매점 탐색</title>
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="로또스팟 홈"><span class="brand-mark">L</span><span>로또스팟</span></a>
+    <nav aria-label="주 메뉴"><a class="active" href="#explore">판매점 찾기</a><button class="nav-link" id="open-info">랭킹 기준</button></nav>
+  </header>
+
+  <main id="explore">
+    <section class="intro">
+      <p class="eyebrow">LOTTO SHOP FINDER</p>
+      <h1>내 주변의 <em>로또 명당</em>을<br>한눈에 찾아보세요.</h1>
+      <p>실제 당첨 이력을 바탕으로 가까운 복권판매점을 비교해 드려요.</p>
+    </section>
+
+    <section class="search-panel" aria-label="지역 검색">
+      <form id="search-form" role="search">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 5 5"></path></svg>
+        <input id="search-input" type="search" minlength="2" autocomplete="off" placeholder="지역, 주소 또는 판매점명을 검색하세요" aria-label="지역, 주소 또는 판매점명">
+        <button type="submit">검색</button>
+      </form>
+      <div id="search-results" class="search-results" hidden></div>
+      <button id="my-location" class="location-button"><span>◎</span> 현재 위치로 찾기</button>
+    </section>
+
+    <section class="workspace" aria-label="판매점 탐색 결과">
+      <div class="map-column">
+        <div id="map" class="map" aria-label="판매점 지도">
+          <div class="map-tiles" aria-hidden="true"></div>
+          <div class="map-markers"></div>
+          <div class="map-center" aria-hidden="true"></div>
+          <div class="map-controls"><button data-map-zoom="in" aria-label="지도 확대">+</button><button data-map-zoom="out" aria-label="지도 축소">−</button></div>
+          <div class="map-attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a></div>
+        </div>
+        <button id="search-center" class="center-search">지도 중심에서 재검색</button>
+      </div>
+
+      <aside class="results-panel">
+        <div class="results-heading"><div><span class="kicker">검색 기준</span><h2 id="search-label">서울시청 주변</h2></div><span id="result-count" class="count">—</span></div>
+        <div class="filters">
+          <label>반경<select id="radius"><option value="1000">1km</option><option value="3000" selected>3km</option><option value="5000">5km</option><option value="10000">10km</option></select></label>
+          <div id="sorts" class="sorts" aria-label="정렬 방식"></div>
+        </div>
+        <div id="results" class="results" aria-live="polite"></div>
+      </aside>
+    </section>
+
+    <section class="trust-strip">
+      <div><strong>공식 데이터 기반</strong><span>동행복권 공개 당첨 결과</span></div>
+      <div><strong>거리별 맞춤 검색</strong><span>1km부터 10km까지</span></div>
+      <div><strong>다양한 랭킹</strong><span>당첨 횟수·당첨금·최신순</span></div>
+    </section>
+  </main>
+
+  <dialog id="detail-dialog" class="detail-dialog"><button class="dialog-close" aria-label="닫기">×</button><div id="detail-content"></div></dialog>
+  <dialog id="info-dialog" class="info-dialog"><button class="dialog-close" aria-label="닫기">×</button><p class="eyebrow">RANKING GUIDE</p><h2>랭킹은 이렇게 계산해요</h2><p>현재 검색 반경 안의 판매점만 비교합니다. 1등·2등 당첨 횟수, 누적 당첨금, 최근 당첨 회차를 기준으로 정렬할 수 있습니다.</p><p class="notice">과거 당첨 이력은 향후 당첨 확률을 보장하지 않습니다.</p></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

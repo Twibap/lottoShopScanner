@@ -1,6 +1,25 @@
 {$API_DOMAIN} {
 	encode zstd gzip
-	reverse_proxy backend:8000
+
+	# 웹은 같은 출처의 /api를 사용하고, 기존 공개 API 경로는 유지한다.
+	handle_path /api/* {
+		reverse_proxy backend:8000
+	}
+	handle /v1/* {
+		reverse_proxy backend:8000
+	}
+	handle /health* {
+		reverse_proxy backend:8000
+	}
+	handle /docs* {
+		reverse_proxy backend:8000
+	}
+	handle /openapi.json {
+		reverse_proxy backend:8000
+	}
+	handle {
+		reverse_proxy frontend:80
+	}
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
